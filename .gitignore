@@ -1,0 +1,51 @@
+# ── 비밀/환경 파일 (절대 커밋 금지) ──────────────────
+# 한 번 올라가면 깃 히스토리에 영원히 남으니 처음부터 차단
+.env
+.env.*
+*.local
+**/application-local.yml
+**/application-local.yaml
+**/application-secret*.yml
+*.pem
+*.key
+*.p12
+secrets/
+credentials/
+ 
+# ── 백엔드: Java / Gradle / Maven ─────────────────────
+backend/build/
+backend/target/
+backend/.gradle/
+backend/out/
+backend/bin/
+*.class
+*.jar
+!gradle/wrapper/gradle-wrapper.jar
+*.log
+hs_err_pid*
+ 
+# ── 확장: Node / TypeScript / VSCode ─────────────────
+extension/node_modules/
+extension/out/
+extension/dist/
+extension/*.vsix
+extension/.vscode-test/
+*.tsbuildinfo
+ 
+# ── 로컬 모델 / 데이터 ────────────────────────────────
+# Ollama 모델 파일이나 로컬 DB 덤프를 레포에 넣지 않도록
+models/
+*.gguf
+data/
+*.sqlite
+*.db
+ 
+# ── 에디터 / OS ──────────────────────────────────────
+.idea/
+*.iml
+.DS_Store
+Thumbs.db
+.vscode/*
+!.vscode/extensions.json
+!.vscode/launch.json
+ 
