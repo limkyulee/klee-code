@@ -1,7 +1,7 @@
 {
   "name": "klee-code",
-  "displayName": "klee-code",
-  "description": "on prem code assistant",
+  "displayName": "Klee Code",
+  "description": "On-prem coding assistant",
   "version": "0.0.1",
   "engines": {
     "vscode": "^1.125.0"
@@ -14,10 +14,24 @@
   "contributes": {
     "commands": [
       {
-        "command": "klee-code.helloWorld",
-        "title": "Hello World"
+        "command": "klee-code.askAssistant",
+        "title": "Klee Code: Ask Assistant"
+      },
+      {
+        "command": "klee-code.newConversation",
+        "title": "Klee Code: New Conversation"
       }
-    ]
+    ],
+    "configuration": {
+      "title": "Klee Code",
+      "properties": {
+        "klee-code.backendUrl": {
+          "type": "string",
+          "default": "http://localhost:8080",
+          "description": "Klee Code backend server URL"
+        }
+      }
+    }
   },
   "scripts": {
     "vscode:prepublish": "npm run package",
