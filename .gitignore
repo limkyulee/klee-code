@@ -26,10 +26,15 @@ hs_err_pid*
  
 # ── 확장: Node / TypeScript / VSCode ─────────────────
 extension/node_modules/
+extension/klee-code/node_modules/
 extension/out/
 extension/dist/
+extension/klee-code/out/
+extension/klee-code/dist/
 extension/*.vsix
+extension/klee-code/*.vsix
 extension/.vscode-test/
+extension/klee-code/.vscode-test/
 *.tsbuildinfo
  
 # ── 로컬 모델 / 데이터 ────────────────────────────────

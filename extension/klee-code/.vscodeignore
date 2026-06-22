@@ -3,12 +3,14 @@
 out/**
 node_modules/**
 src/**
+webview-ui/**
 .gitignore
 .yarnrc
-esbuild.js
+vite.*.config.ts
 vsc-extension-quickstart.md
 **/tsconfig.json
-**/eslint.config.mjs
+**/.oxlintrc.json
+**/.node-version
 **/*.map
 **/*.ts
 **/.vscode-test.*
