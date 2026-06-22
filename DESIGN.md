@@ -164,9 +164,9 @@ DB는 MongoDB로 확정 — ChatMemory 백엔드 자동 지원(`ai_chat_memory` 
 
 ## 6. 구현 단계
 
-- **Phase 0** — 동작하는 뼈대: 확장(명령 1개) + 백엔드 `POST /chat` + ChatClient
+- **Phase 0 완료** — 동작하는 뼈대: 확장(명령 1개) + 백엔드 `POST /chat` + ChatClient
   + **ChatMemory(연속 대화, conversationId 포함)**. end-to-end + 후속 질문 1턴.
-- **Phase 1** — 프로바이더 교체: `application.yml` 토글, Ollama 로컬 모델 연결.
+- **Phase 1 완료** — 프로바이더 교체: `spring.ai.model.chat` 토글, Ollama 로컬 모델 연결.
 - **Phase 2** — MCP: 직접 조회를 MCP 서버/도구로 승격.
 - **Phase 3** — 컨텍스트 & 감사 로그: 코드 컨텍스트 수집, 로그 저장.
 - **Phase 4** — 온프렘 패키징: docker-compose(백엔드 + Ollama + DB), 데모 영상/GIF.

@@ -66,8 +66,8 @@
 
 ## 구현 단계
 
-- [ ] **Phase 0** — 뼈대: 확장 명령 1개 + `POST /chat` + ChatClient (end-to-end)
-- [ ] **Phase 1** — 프로바이더 교체: `application.yml` 토글, Ollama 연결
+- [x] **Phase 0** — 뼈대: 확장 명령 1개 + `POST /chat` + ChatClient (end-to-end)
+- [x] **Phase 1** — 프로바이더 교체: `application.yml` 토글, Ollama 연결
 - [ ] **Phase 2** — MCP: 직접 DB 조회 → MCP 서버/도구로 승격
 - [ ] **Phase 3** — 컨텍스트 & 감사 로그: 코드 컨텍스트 수집, 로그 저장
 - [ ] **Phase 4** — 온프렘 패키징: docker-compose + 데모 GIF
@@ -93,43 +93,50 @@ ollama pull qwen2.5-coder:3b
 
 ```bash
 cd backend
-./mvnw spring-boot:run
+./gradlew bootRun
 ```
 
 `src/main/resources/application.yml`에서 모델 프로바이더를 설정합니다.
 
 ```yaml
-# 로컬 모드 (데이터가 경계 밖으로 나가지 않음)
 spring:
   ai:
-    ollama:
-      chat:
-        model: qwen2.5-coder:3b
+    # 외부 Claude: anthropic / 로컬 Ollama: ollama
+    model:
+      chat: anthropic
 
-# 외부 모드 (application-external.yml)
-# spring:
-#   ai:
-#     anthropic:
-#       chat:
-#         model: claude-sonnet-4-6
+    anthropic:
+      api-key: ${ANTHROPIC_API_KEY:}
+      chat:
+        model: ${ANTHROPIC_MODEL:claude-haiku-4-5-20251001}
+
+    ollama:
+      base-url: ${OLLAMA_BASE_URL:http://localhost:11434}
+      chat:
+        model: ${OLLAMA_MODEL:qwen2.5-coder:3b}
+```
+
+로컬 Ollama 모드로 실행하려면 다음처럼 프로바이더만 바꿉니다.
+
+```bash
+KLEE_CODE_AI_PROVIDER=ollama ./gradlew bootRun
 ```
 
 ### 3. VSCode 확장 설치
 
 ```bash
-cd extension
+cd extension/klee-code
 npm install
 npm run compile
 ```
 
 F5로 Extension Development Host를 실행하거나, `.vsix`로 패키지 후 설치합니다.
 
-VSCode 설정에서 백엔드 URL과 API 키를 입력합니다.
+VSCode 설정에서 백엔드 URL을 입력합니다.
 
 ```json
 {
-  "kleeCode.backendUrl": "http://localhost:8080",
-  "kleeCode.apiKey": "your-key-here"
+  "klee-code.backendUrl": "http://localhost:8080"
 }
 ```
 

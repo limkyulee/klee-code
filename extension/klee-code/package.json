@@ -9,9 +9,32 @@
   "categories": [
     "Other"
   ],
-  "activationEvents": [],
+  "activationEvents": [
+    "onView:klee-code.chatView",
+    "onCommand:klee-code.askAssistant",
+    "onCommand:klee-code.newConversation"
+  ],
   "main": "./dist/extension.js",
   "contributes": {
+    "viewsContainers": {
+      "panel": [
+        {
+          "id": "klee-code",
+          "title": "Klee Code",
+          "icon": "resources/klee-code.svg"
+        }
+      ]
+    },
+    "views": {
+      "klee-code": [
+        {
+          "id": "klee-code.chatView",
+          "name": "Chat",
+          "type": "webview",
+          "icon": "resources/klee-code.svg"
+        }
+      ]
+    },
     "commands": [
       {
         "command": "klee-code.askAssistant",
