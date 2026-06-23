@@ -1,5 +1,5 @@
 /*
- * 백엔드 채팅 API HTTP 클라이언트.
+ * Backend chat API client.
  */
 
 import { getBackendUrl } from '../config/settings';

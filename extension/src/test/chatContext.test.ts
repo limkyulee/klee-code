@@ -1,5 +1,5 @@
 import * as assert from 'assert';
-import { buildChatRequest, type TextEditorLike } from '../chat/context';
+import { buildChatRequest, type TextEditorLike } from '../extension-host/chat/context';
 
 function createEditor(overrides: Partial<TextEditorLike> = {}): TextEditorLike {
     const document: TextEditorLike['document'] = overrides.document ?? {

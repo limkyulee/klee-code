@@ -8,7 +8,7 @@ export default defineConfig(({ mode }) => ({
     build: {
         emptyOutDir: false,
         lib: {
-            entry: resolve(__dirname, 'src/extension.ts'),
+            entry: resolve(__dirname, 'src/extension-host/extension.ts'),
             formats: ['cjs'],
             fileName: () => 'extension.js',
         },

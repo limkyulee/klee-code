@@ -11,7 +11,7 @@ export default defineConfig(({ mode }) => ({
         cssCodeSplit: false,
         emptyOutDir: true,
         lib: {
-            entry: resolve(__dirname, 'webview-ui/src/App.tsx'),
+            entry: resolve(__dirname, 'webview-ui/src/main.tsx'),
             formats: ['iife'],
             name: 'KleeCodeWebview',
             fileName: () => 'app.js',

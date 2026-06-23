@@ -1,6 +1,6 @@
 import * as vscode from 'vscode';
 import { randomUUID } from 'crypto';
-import { sendChatMessageStream } from '../services/llmService';
+import { sendChatMessageStream } from '../services/chatApiClient';
 import { getBackendUrl } from '../config/settings';
 import { buildChatRequest } from '../chat/context';
 
@@ -9,7 +9,7 @@ export type WebviewMessage =
     | { type: 'SEND_MESSAGE'; payload: { text: string } }
     | { type: 'NEW_CONVERSATION' };
 
-export class WebviewMessageHandler {
+export class ChatWebviewMessageHandler {
     private conversationId = randomUUID();
 
     constructor(private readonly postMessage: (message: Record<string, unknown>) => Thenable<boolean>) {}

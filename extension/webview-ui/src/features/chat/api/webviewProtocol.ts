@@ -16,21 +16,3 @@ export type ExtensionToWebviewMessage =
     | { type: 'ASSISTANT_RESPONSE'; payload: { messageId: string } }
     | { type: 'ERROR'; payload: { message: string; messageId?: string } }
     | { type: 'CONVERSATION_RESET' };
-
-interface VsCodeApi {
-    postMessage(message: WebviewToExtensionMessage): void;
-}
-
-declare global {
-    interface Window {
-        acquireVsCodeApi?: () => VsCodeApi;
-    }
-}
-
-const fallbackApi: VsCodeApi = {
-    postMessage(message) {
-        console.info('VS Code API unavailable', message);
-    },
-};
-
-export const vscode = window.acquireVsCodeApi?.() ?? fallbackApi;

@@ -1,12 +1,4 @@
-export type MessageRole = 'user' | 'assistant' | 'error';
-
-export interface ChatMessage {
-    id: string;
-    role: MessageRole;
-    text: string;
-    progress?: string[];
-    streaming?: boolean;
-}
+import type { ChatMessage, MessageRole } from '../types';
 
 const roleLabel: Record<MessageRole, string> = {
     user: 'You',

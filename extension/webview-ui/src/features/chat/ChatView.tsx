@@ -1,48 +1,11 @@
 import { useEffect, useReducer, useState } from 'react';
-import { createRoot } from 'react-dom/client';
+import { vscode } from './api/vscodeBridge';
+import type { ExtensionToWebviewMessage } from './api/webviewProtocol';
 import { ChatInput } from './components/ChatInput';
 import { MessageList } from './components/MessageList';
-import type { ChatMessage } from './components/MessageBubble';
-import { vscode, type ExtensionToWebviewMessage } from './api/vscodeBridge';
-import './style/style.css';
+import { messageReducer } from './model/messageReducer';
 
-type MessageAction =
-    | { type: 'add'; message: Omit<ChatMessage, 'id'>; id?: string }
-    | { type: 'appendText'; id: string; text: string }
-    | { type: 'appendProgress'; id: string; text: string }
-    | { type: 'finish'; id: string }
-    | { type: 'reset' };
-
-function messageReducer(messages: ChatMessage[], action: MessageAction): ChatMessage[] {
-    switch (action.type) {
-        case 'add':
-            return [
-                ...messages,
-                {
-                    ...action.message,
-                    id: action.id ?? `${Date.now()}-${messages.length}`,
-                },
-            ];
-        case 'appendText':
-            return messages.map((message) =>
-                message.id === action.id ? { ...message, text: `${message.text}${action.text}` } : message,
-            );
-        case 'appendProgress':
-            return messages.map((message) =>
-                message.id === action.id
-                    ? { ...message, progress: [...(message.progress ?? []), action.text] }
-                    : message,
-            );
-        case 'finish':
-            return messages.map((message) =>
-                message.id === action.id ? { ...message, streaming: false } : message,
-            );
-        case 'reset':
-            return [];
-    }
-}
-
-function App() {
+export function ChatView() {
     const [messages, dispatch] = useReducer(messageReducer, []);
     const [pending, setPending] = useState(false);
     const [status, setStatus] = useState('Connecting...');
@@ -140,10 +103,4 @@ function App() {
             <ChatInput disabled={pending} onSend={sendMessage} />
         </div>
     );
-}
-
-const root = document.getElementById('root');
-
-if (root) {
-    createRoot(root).render(<App />);
 }
