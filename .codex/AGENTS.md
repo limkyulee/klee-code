@@ -2,7 +2,7 @@
 
 ## Program History
 
-For every user request handled in this repository, maintain a Markdown history file under the root-level `program-history` directory.
+For every user request handled in this repository, maintain a Markdown history file under the `.codex/program-history` directory.
 
 ### When to Write
 
@@ -12,7 +12,7 @@ For every user request handled in this repository, maintain a Markdown history f
 
 ### File Location and Naming
 
-- Store history files in `program-history/`.
+- Store history files in `.codex/program-history/`.
 - Use the next numeric index in the filename.
 - Filename format:
 
@@ -72,3 +72,10 @@ Codex가 어떤 파일을 확인했고, 어떤 변경을 했고, 어떤 판단�
 - Do not include secrets, API keys, tokens, private credentials, or large raw logs.
 - Do not overwrite previous history entries unless correcting the current task's entry.
 - If unrelated user changes are present in the working tree, mention only the files relevant to the task.
+
+## Backend Structure Rules
+
+- Treat each business domain as a separate package root; do not nest unrelated domains under `chat/`.
+- Organize backend code by MVC layer inside each domain: `controller`, `service`, `repository`, and `dto`.
+- Use `record` for request/response/transport objects and simple immutable domain data whenever the type does not need mutation.
+- Keep persistence-specific documents and repositories in their own domain package rather than sharing another domain's namespace.

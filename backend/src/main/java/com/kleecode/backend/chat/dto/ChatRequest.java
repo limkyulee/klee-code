@@ -1,7 +1,5 @@
 package com.kleecode.backend.chat.dto;
 
-import lombok.Data;
-
 /**
  * POST /chat 요청 바디.
  *
@@ -10,16 +8,13 @@ import lombok.Data;
  *
  * <p>code 는 선택 값이다(null 또는 빈 문자열 허용).
  * 에디터에서 선택한 코드가 없으면 question 만 전달된다.
+ *
+ * <p>context 는 파일 경로, 언어, 선택 범위, 주변 코드 조각을 담는 메타데이터다.
  */
-@Data
-public class ChatRequest {
-
-    /* VS Code 확장이 세션 시작 시 생성하는 UUID — 연속 대화를 식별하는 키 */
-    private String conversationId;
-
-    /* 에디터에서 선택한 코드 스니펫 (없으면 null 또는 "") */
-    private String code;
-
-    /* 사용자 질문 */
-    private String question;
+public record ChatRequest(
+        String conversationId,
+        String code,
+        String question,
+        CodeContext context
+) {
 }

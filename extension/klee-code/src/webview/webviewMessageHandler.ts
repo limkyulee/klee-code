@@ -2,6 +2,7 @@ import * as vscode from 'vscode';
 import { randomUUID } from 'crypto';
 import { sendChatMessageStream } from '../services/llmService';
 import { getBackendUrl } from '../config/settings';
+import { buildChatRequest } from '../chat/context';
 
 export type WebviewMessage =
     | { type: 'WEBVIEW_READY' }
@@ -50,13 +51,9 @@ export class WebviewMessageHandler {
 
         try {
             const editor = vscode.window.activeTextEditor;
-            const code = editor?.document.getText(editor.selection) ?? '';
+            const request = buildChatRequest(editor, this.conversationId, trimmedQuestion);
             await sendChatMessageStream(
-                {
-                    conversationId: this.conversationId,
-                    code,
-                    question: trimmedQuestion,
-                },
+                request,
                 {
                     onProgressDelta: async (text) => {
                         void this.postMessage({

@@ -69,7 +69,7 @@
 - [x] **Phase 0** — 뼈대: 확장 명령 1개 + `POST /chat` + ChatClient (end-to-end)
 - [x] **Phase 1** — 프로바이더 교체: `application.yml` 토글, Ollama 연결
 - [ ] **Phase 2** — MCP: 직접 DB 조회 → MCP 서버/도구로 승격
-- [ ] **Phase 3** — 컨텍스트 & 감사 로그: 코드 컨텍스트 수집, 로그 저장
+- [x] **Phase 3** — 컨텍스트 & 감사 로그: 코드 컨텍스트 수집, 로그 저장
 - [ ] **Phase 4** — 온프렘 패키징: docker-compose + 데모 GIF
 
 ---

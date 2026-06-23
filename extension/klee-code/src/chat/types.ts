@@ -3,6 +3,21 @@
  * 백엔드 ChatRequest / ChatResponse DTO 와 필드가 일치해야 한다.
  */
 
+export interface SelectionRange {
+    startLine: number;
+    startCharacter: number;
+    endLine: number;
+    endCharacter: number;
+}
+
+export interface CodeContext {
+    filePath: string;
+    languageId: string;
+    selectionRange: SelectionRange;
+    selectedText: string;
+    surroundingSnippet: string;
+}
+
 /** POST /chat 요청 바디 */
 export interface ChatRequest {
     /** 연속 대화를 식별하는 UUID — extension 이 세션 시작 시 생성하고 보관 */
@@ -13,6 +28,9 @@ export interface ChatRequest {
 
     /** 사용자 질문 */
     question: string;
+
+    /** 코드 위치/언어/주변 컨텍스트 메타데이터 */
+    context?: CodeContext;
 }
 
 /** POST /chat 응답 바디 */

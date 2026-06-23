@@ -1,10 +1,17 @@
 package com.kleecode.backend.chat.service;
 
+import com.kleecode.backend.audit.dto.AuditLog;
+import com.kleecode.backend.audit.service.AuditLogService;
 import com.kleecode.backend.chat.dto.ChatRequest;
 import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.ai.chat.client.ChatClient;
 import org.springframework.stereotype.Service;
 import reactor.core.publisher.Flux;
+import reactor.core.publisher.SignalType;
+
+import java.util.Optional;
+import java.util.concurrent.atomic.AtomicReference;
 
 /**
  * 채팅 비즈니스 로직.
@@ -24,10 +31,14 @@ public class ChatService {
     /*
      * Spring AI 2.0 에서 MessageChatMemoryAdvisor 가 advisor context 에서
      * conversationId 를 조회할 때 사용하는 키 (BaseChatMemoryAdvisor#getConversationId 참고).
-     */
+    */
     private static final String CONVERSATION_ID_KEY = "chat_memory_conversation_id";
 
     private final ChatClient chatClient;
+    private final AuditLogService auditLogService;
+
+    @Value("${spring.ai.model.chat:anthropic}")
+    private String modelProvider;
 
     /**
      * LLM 에 질문을 보내고 응답 텍스트를 반환한다.
@@ -36,13 +47,23 @@ public class ChatService {
      * @return LLM 응답 텍스트
      */
     public String chat(ChatRequest request) {
+        Optional<AuditLog> auditLog = auditLogService.start(request, modelProvider, isExternalTransfer());
+
         /* advisor param 으로 conversationId 를 넘기면 MessageChatMemoryAdvisor 가
            해당 ID 의 과거 대화 이력을 프롬프트 앞에 자동으로 주입한다. */
-        return chatClient.prompt()
-                .user(toUserMessage(request))
-                .advisors(a -> a.param(CONVERSATION_ID_KEY, request.getConversationId()))
-                .call()
-                .content();
+        try {
+            String answer = chatClient.prompt()
+                    .user(toUserMessage(request))
+                    .advisors(a -> a.param(CONVERSATION_ID_KEY, request.conversationId()))
+                    .call()
+                    .content();
+
+            auditLogService.markSucceeded(auditLog, answer);
+            return answer;
+        } catch (RuntimeException ex) {
+            auditLogService.markFailed(auditLog, ex.getMessage());
+            throw ex;
+        }
     }
 
     /**
@@ -52,18 +73,57 @@ public class ChatService {
      * @return LLM 응답 텍스트 조각 스트림
      */
     public Flux<String> stream(ChatRequest request) {
+        Optional<AuditLog> auditLog = auditLogService.start(request, modelProvider, isExternalTransfer());
+        AtomicReference<StringBuilder> answer = new AtomicReference<>(new StringBuilder());
+
         return chatClient.prompt()
                 .user(toUserMessage(request))
-                .advisors(a -> a.param(CONVERSATION_ID_KEY, request.getConversationId()))
+                .advisors(a -> a.param(CONVERSATION_ID_KEY, request.conversationId()))
                 .stream()
-                .content();
+                .content()
+                .doOnNext(answerChunk -> answer.get().append(answerChunk))
+                .doOnError(ex -> auditLogService.markFailed(auditLog, ex.getMessage()))
+                .doFinally(signalType -> {
+                    if (signalType == SignalType.ON_COMPLETE) {
+                        auditLogService.markSucceeded(auditLog, answer.get().toString());
+                    }
+                });
     }
 
     private String toUserMessage(ChatRequest request) {
-        /* 코드가 있으면 마크다운 코드 블록으로 감싸 질문과 함께 전달한다.
+        /* 코드가 있으면 선택 코드와 주변 컨텍스트를 함께 전달한다.
            코드가 없으면 질문만 그대로 전달한다. */
-        return (request.getCode() != null && !request.getCode().isBlank())
-                ? "Code:\n```\n" + request.getCode() + "\n```\n\nQuestion: " + request.getQuestion()
-                : request.getQuestion();
+        if (request.code() == null || request.code().isBlank()) {
+            return request.question();
+        }
+
+        StringBuilder message = new StringBuilder();
+        if (request.context() != null) {
+            if (request.context().filePath() != null && !request.context().filePath().isBlank()) {
+                message.append("File: ").append(request.context().filePath()).append('\n');
+            }
+            if (request.context().languageId() != null && !request.context().languageId().isBlank()) {
+                message.append("Language: ").append(request.context().languageId()).append('\n');
+            }
+        }
+
+        message.append("Selected code:\n```\n")
+                .append(request.code())
+                .append("\n```\n");
+
+        if (request.context() != null
+                && request.context().surroundingSnippet() != null
+                && !request.context().surroundingSnippet().isBlank()) {
+            message.append("\nSurrounding context:\n```\n")
+                    .append(request.context().surroundingSnippet())
+                    .append("\n```\n");
+        }
+
+        message.append("\nQuestion: ").append(request.question());
+        return message.toString();
+    }
+
+    private boolean isExternalTransfer() {
+        return !"ollama".equalsIgnoreCase(modelProvider);
     }
 }

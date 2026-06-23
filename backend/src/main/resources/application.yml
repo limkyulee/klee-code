@@ -4,6 +4,7 @@ spring:
   data:
     mongodb:
       uri: ${MONGODB_URI:mongodb://localhost:27017/kleecode}
+      auto-index-creation: true
   ai:
     model:
       chat: ${KLEE_CODE_AI_PROVIDER:anthropic}
