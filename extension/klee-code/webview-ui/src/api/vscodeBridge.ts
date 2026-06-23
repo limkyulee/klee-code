@@ -9,10 +9,12 @@ export type WebviewToExtensionMessage =
 
 export type ExtensionToWebviewMessage =
     | { type: 'STATUS'; payload: { backendUrl: string } }
-    | { type: 'REQUEST_STARTED' }
+    | { type: 'REQUEST_STARTED'; payload: { messageId: string } }
     | { type: 'USER_MESSAGE'; payload: { text: string } }
-    | { type: 'ASSISTANT_RESPONSE'; payload: { text: string } }
-    | { type: 'ERROR'; payload: { message: string } }
+    | { type: 'PROGRESS_DELTA'; payload: { messageId: string; text: string } }
+    | { type: 'ASSISTANT_DELTA'; payload: { messageId: string; text: string } }
+    | { type: 'ASSISTANT_RESPONSE'; payload: { messageId: string } }
+    | { type: 'ERROR'; payload: { message: string; messageId?: string } }
     | { type: 'CONVERSATION_RESET' };
 
 interface VsCodeApi {

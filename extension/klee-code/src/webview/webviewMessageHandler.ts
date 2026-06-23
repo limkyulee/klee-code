@@ -1,6 +1,6 @@
 import * as vscode from 'vscode';
 import { randomUUID } from 'crypto';
-import { sendChatMessage } from '../services/llmService';
+import { sendChatMessageStream } from '../services/llmService';
 import { getBackendUrl } from '../config/settings';
 
 export type WebviewMessage =
@@ -44,25 +44,48 @@ export class WebviewMessageHandler {
             return;
         }
 
-        await this.postMessage({ type: 'REQUEST_STARTED' });
+        const assistantMessageId = randomUUID();
+
+        await this.postMessage({ type: 'REQUEST_STARTED', payload: { messageId: assistantMessageId } });
 
         try {
             const editor = vscode.window.activeTextEditor;
             const code = editor?.document.getText(editor.selection) ?? '';
-            const response = await sendChatMessage({
-                conversationId: this.conversationId,
-                code,
-                question: trimmedQuestion,
-            });
-
-            await this.postMessage({
-                type: 'ASSISTANT_RESPONSE',
-                payload: { text: response.answer },
-            });
+            await sendChatMessageStream(
+                {
+                    conversationId: this.conversationId,
+                    code,
+                    question: trimmedQuestion,
+                },
+                {
+                    onProgressDelta: async (text) => {
+                        void this.postMessage({
+                            type: 'PROGRESS_DELTA',
+                            payload: { messageId: assistantMessageId, text },
+                        });
+                    },
+                    onAnswerDelta: async (text) => {
+                        void this.postMessage({
+                            type: 'ASSISTANT_DELTA',
+                            payload: { messageId: assistantMessageId, text },
+                        });
+                    },
+                    onDone: async () => {
+                        void this.postMessage({
+                            type: 'ASSISTANT_RESPONSE',
+                            payload: { messageId: assistantMessageId },
+                        });
+                    },
+                },
+            );
         } catch (err) {
+            const message = err instanceof Error ? err.message : String(err);
             await this.postMessage({
                 type: 'ERROR',
-                payload: { message: err instanceof Error ? err.message : String(err) },
+                payload: {
+                    messageId: assistantMessageId,
+                    message,
+                },
             });
         }
     }

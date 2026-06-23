@@ -9,7 +9,11 @@ export function MessageList({ messages }: MessageListProps) {
     const endRef = useRef<HTMLDivElement | null>(null);
 
     useEffect(() => {
-        endRef.current?.scrollIntoView({ block: 'end' });
+        const frame = requestAnimationFrame(() => {
+            endRef.current?.scrollIntoView({ block: 'end' });
+        });
+
+        return () => cancelAnimationFrame(frame);
     }, [messages]);
 
     return (

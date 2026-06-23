@@ -7,8 +7,7 @@ import lombok.Data;
  * POST /chat 응답 바디.
  *
  * <p>LLM 이 생성한 텍스트를 answer 필드 하나로 감싸 반환한다.
- * Phase 3 이후 스트리밍(SSE) 으로 전환할 때 이 DTO 는 제거되고
- * Flux&lt;String&gt; 으로 대체될 예정이다.
+ * SSE 기반 스트리밍 응답은 POST /chat/stream 에서 별도로 제공한다.
  */
 @Data
 @AllArgsConstructor
