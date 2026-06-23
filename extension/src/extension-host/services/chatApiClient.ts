@@ -70,7 +70,7 @@ export async function sendChatMessageStream(request: ChatRequest, handlers: Chat
 
     buffer += decoder.decode();
 
-    if (buffer.trim()) {
+    if (buffer.length > 0) {
         handleServerSentEvent(buffer, handlers);
     }
 }
@@ -81,9 +81,9 @@ function handleServerSentEvent(eventText: string, handlers: ChatStreamHandlers):
 
     for (const line of eventText.split(/\r?\n/)) {
         if (line.startsWith('event:')) {
-            eventName = line.slice('event:'.length).trim();
+            eventName = readEventFieldValue(line, 'event');
         } else if (line.startsWith('data:')) {
-            dataLines.push(line.slice('data:'.length).trimStart());
+            dataLines.push(readEventFieldValue(line, 'data'));
         }
     }
 
@@ -104,4 +104,9 @@ function parseStreamData(data: string): string {
     } catch {
         return data;
     }
+}
+
+function readEventFieldValue(line: string, fieldName: string): string {
+    const value = line.slice(`${fieldName}:`.length);
+    return value.startsWith(' ') ? value.slice(1) : value;
 }

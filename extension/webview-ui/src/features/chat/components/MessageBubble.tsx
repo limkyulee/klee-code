@@ -1,4 +1,5 @@
 import type { ChatMessage, MessageRole } from '../types';
+import { MarkdownMessage } from './MarkdownMessage';
 
 const roleLabel: Record<MessageRole, string> = {
     user: 'You',
@@ -26,7 +27,7 @@ export function MessageBubble({ message }: MessageBubbleProps) {
                     </details>
                 ) : null}
                 <div className="message-text">
-                    {message.text}
+                    <MarkdownMessage text={message.text} />
                     {message.streaming ? <span className="cursor" aria-label="Streaming response" /> : null}
                 </div>
             </div>

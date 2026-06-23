@@ -9,6 +9,7 @@ import org.springframework.ai.chat.client.ChatClient;
 import org.springframework.stereotype.Service;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.SignalType;
+import lombok.extern.slf4j.Slf4j;
 
 import java.util.Optional;
 import java.util.concurrent.atomic.AtomicReference;
@@ -24,6 +25,7 @@ import java.util.concurrent.atomic.AtomicReference;
  * <p>어떤 모델을 쓰는지(Anthropic / Ollama)는 ChatClient 빈 설정에서 결정되며,
  * 이 클래스는 모델을 직접 알지 못한다 — Phase 1 모델 교체가 이 클래스를 건드리지 않는 이유다.
  */
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class ChatService {
@@ -76,12 +78,18 @@ public class ChatService {
         Optional<AuditLog> auditLog = auditLogService.start(request, modelProvider, isExternalTransfer());
         AtomicReference<StringBuilder> answer = new AtomicReference<>(new StringBuilder());
 
+        log.info("Streaming chat request: conversationId={}, question={}", request.conversationId(), request.question());
+        log.info("answer reference: {}", answer.get());
+
         return chatClient.prompt()
                 .user(toUserMessage(request))
                 .advisors(a -> a.param(CONVERSATION_ID_KEY, request.conversationId()))
                 .stream()
                 .content()
-                .doOnNext(answerChunk -> answer.get().append(answerChunk))
+                .doOnNext(answerChunk -> {
+                    answer.get().append(answerChunk);
+                    log.info("Received answer chunk: {}", answerChunk);
+                })
                 .doOnError(ex -> auditLogService.markFailed(auditLog, ex.getMessage()))
                 .doFinally(signalType -> {
                     if (signalType == SignalType.ON_COMPLETE) {

@@ -108,7 +108,6 @@ textarea {
     border: 1px solid var(--vscode-input-border, var(--vscode-sideBar-border));
     border-radius: 6px;
     line-height: 1.45;
-    white-space: pre-wrap;
     overflow-wrap: anywhere;
 }
 
@@ -141,6 +140,181 @@ textarea {
 .message-text:empty::before {
     color: var(--vscode-descriptionForeground);
     content: 'Streaming response...';
+}
+
+.markdown-message {
+    display: grid;
+    gap: 8px;
+}
+
+.markdown-message:empty {
+    display: none;
+}
+
+.markdown-heading,
+.markdown-paragraph,
+.markdown-list,
+.markdown-code-block {
+    margin: 0;
+}
+
+.markdown-heading {
+    margin-top: 4px;
+    font-size: 1em;
+    font-weight: 700;
+    line-height: 1.35;
+}
+
+.markdown-paragraph {
+    white-space: pre-wrap;
+}
+
+.markdown-list {
+    padding-left: 20px;
+}
+
+.markdown-list li + li {
+    margin-top: 4px;
+}
+
+.markdown-inline-code {
+    padding: 1px 4px;
+    border-radius: 3px;
+    color: var(--vscode-textPreformat-foreground, var(--vscode-editor-foreground));
+    background: var(--vscode-textCodeBlock-background, var(--vscode-editorWidget-background));
+    font-family: var(--vscode-editor-font-family, monospace);
+    font-size: 0.92em;
+}
+
+.markdown-code-block {
+    width: 100%;
+    max-width: 100%;
+    overflow: hidden;
+    border: 1px solid var(--vscode-editorWidget-border, var(--vscode-sideBar-border));
+    border-radius: 4px;
+    background: var(--vscode-textCodeBlock-background, var(--vscode-editor-background));
+}
+
+.markdown-code-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    min-height: 24px;
+    padding: 5px 6px 5px 8px;
+    color: var(--vscode-descriptionForeground);
+    border-bottom: 1px solid var(--vscode-editorWidget-border, var(--vscode-sideBar-border));
+    font-size: 11px;
+    font-weight: 600;
+    line-height: 1.2;
+}
+
+.markdown-code-language {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    text-transform: lowercase;
+}
+
+.markdown-code-copy {
+    display: inline-grid;
+    place-items: center;
+    flex: 0 0 auto;
+    width: 24px;
+    height: 22px;
+    padding: 0;
+    color: var(--vscode-icon-foreground, var(--vscode-descriptionForeground));
+    background: transparent;
+    border: 1px solid transparent;
+    border-radius: 4px;
+    cursor: pointer;
+}
+
+.markdown-code-copy:hover {
+    color: var(--vscode-button-foreground);
+    background: var(--vscode-toolbar-hoverBackground, var(--vscode-button-secondaryHoverBackground));
+}
+
+.markdown-code-copy:focus-visible {
+    outline: 1px solid var(--vscode-focusBorder);
+    outline-offset: 1px;
+}
+
+.markdown-code-copy-icon {
+    position: relative;
+    width: 14px;
+    height: 14px;
+}
+
+.markdown-code-copy-icon::before,
+.markdown-code-copy-icon::after {
+    position: absolute;
+    content: '';
+}
+
+.markdown-code-copy-icon::before {
+    top: 1px;
+    left: 1px;
+    width: 8px;
+    height: 10px;
+    border: 1.5px solid currentColor;
+    border-radius: 2px;
+    opacity: 0.55;
+}
+
+.markdown-code-copy-icon::after {
+    right: 1px;
+    bottom: 1px;
+    width: 8px;
+    height: 10px;
+    background: var(--vscode-textCodeBlock-background, var(--vscode-editor-background));
+    border: 1.5px solid currentColor;
+    border-radius: 2px;
+}
+
+.markdown-code-copy-copied {
+    color: var(--vscode-testing-iconPassed, #73c991);
+}
+
+.markdown-code-copy-copied .markdown-code-copy-icon::before {
+    display: none;
+}
+
+.markdown-code-copy-copied .markdown-code-copy-icon::after {
+    right: 2px;
+    bottom: 3px;
+    width: 10px;
+    height: 6px;
+    background: transparent;
+    border-width: 0 0 2px 2px;
+    border-radius: 0;
+    transform: rotate(-45deg);
+}
+
+.markdown-code-copy-failed {
+    color: var(--vscode-errorForeground);
+}
+
+.markdown-code-block pre {
+    margin: 0;
+    overflow-x: auto;
+    padding: 10px;
+}
+
+.markdown-code-block code {
+    display: block;
+    min-width: max-content;
+    font-family: var(--vscode-editor-font-family, monospace);
+    font-size: var(--vscode-editor-font-size, 12px);
+    line-height: 1.5;
+    white-space: pre;
+    overflow-wrap: normal;
+}
+
+.markdown-code-block .hljs {
+    padding: 0;
+    background: transparent;
 }
 
 .cursor {

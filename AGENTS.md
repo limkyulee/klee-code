@@ -2,7 +2,7 @@
 
 ## Program History
 
-For every user request handled in this repository, maintain a Markdown history file under the `.codex/program-history` directory.
+For every user request handled in this repository, maintain a Markdown history file under the `./program-history` directory.
 
 ### When to Write
 
@@ -12,7 +12,7 @@ For every user request handled in this repository, maintain a Markdown history f
 
 ### File Location and Naming
 
-- Store history files in `.codex/program-history/`.
+- Store history files in `./program-history/`.
 - Use the next numeric index in the filename.
 - Filename format:
 

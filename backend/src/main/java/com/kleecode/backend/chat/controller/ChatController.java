@@ -11,6 +11,7 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
+import tools.jackson.databind.json.JsonMapper;
 
 import java.io.IOException;
 
@@ -30,6 +31,7 @@ import java.io.IOException;
 public class ChatController {
 
     private final ChatService chatService;
+    private final JsonMapper jsonMapper;
 
     /**
      * 질문을 LLM 에 전달하고 응답을 반환한다.
@@ -76,8 +78,9 @@ public class ChatController {
 
     private void sendEvent(SseEmitter emitter, String name, String data) {
         try {
+            String encodedData = jsonMapper.writeValueAsString(data);
             synchronized (emitter) {
-                emitter.send(SseEmitter.event().name(name).data(data));
+                emitter.send(SseEmitter.event().name(name).data(encodedData));
             }
         } catch (IOException ex) {
             emitter.completeWithError(ex);
