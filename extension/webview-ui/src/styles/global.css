@@ -349,54 +349,340 @@ textarea {
 
 .composer {
     display: grid;
-    gap: 8px;
+    gap: 10px;
+    position: relative;
+    margin: 10px;
     padding: 10px;
-    border-top: 1px solid var(--vscode-sideBar-border);
+    background: var(--vscode-input-background);
+    border: 1px solid var(--vscode-input-border, var(--vscode-sideBar-border));
+    border-radius: 12px;
 }
 
 textarea {
     width: 100%;
-    min-height: 78px;
+    min-height: 70px;
     max-height: 160px;
     resize: vertical;
-    padding: 8px;
+    padding: 2px 0;
     color: var(--vscode-input-foreground);
-    background: var(--vscode-input-background);
-    border: 1px solid var(--vscode-input-border, transparent);
-    border-radius: 4px;
+    background: transparent;
+    border: 0;
+    border-radius: 0;
     line-height: 1.4;
 }
 
 textarea:focus {
-    outline: 1px solid var(--vscode-focusBorder);
-    outline-offset: -1px;
+    outline: 0;
 }
 
-.actions {
+.composer:focus-within {
+    border-color: var(--vscode-focusBorder);
+}
+
+.composer-bar,
+.composer-left,
+.composer-right {
     display: flex;
     align-items: center;
-    justify-content: flex-end;
     gap: 8px;
+    min-width: 0;
+}
+
+.composer-bar {
+    justify-content: space-between;
+}
+
+.composer-left,
+.composer-right {
+    flex-wrap: nowrap;
+}
+
+.composer-left {
+    flex: 1 1 auto;
+}
+
+.composer-right {
+    flex: 0 1 auto;
+}
+
+.tool-button,
+.send {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    height: 30px;
+    border: 1px solid transparent;
+    color: var(--vscode-descriptionForeground);
+    background: transparent;
+    cursor: pointer;
+}
+
+.tool-button:hover,
+.send:hover {
+    color: var(--vscode-foreground);
+    background: var(--vscode-toolbar-hoverBackground, var(--vscode-list-hoverBackground));
+}
+
+.icon-only {
+    width: 30px;
+    flex: 0 0 30px;
+    padding: 0;
+    border-radius: 50%;
 }
 
 .send {
-    min-width: 76px;
-    height: 30px;
-    padding: 0 12px;
-    border: 1px solid var(--vscode-button-border, transparent);
-    border-radius: 4px;
-    color: var(--vscode-button-foreground);
-    background: var(--vscode-button-background);
-    cursor: pointer;
+    color: var(--vscode-editor-background, #1f1f1f);
+    background: #fff;
+}
+
+.send:hover:not(:disabled) {
+    background: #f2f2f2;
+}
+
+.send.stop {
+    color: var(--vscode-editor-background);
+    background: var(--vscode-descriptionForeground);
+}
+
+.send:disabled {
+    color: var(--vscode-descriptionForeground);
+    background: transparent;
+    opacity: 0.65;
+    cursor: not-allowed;
+}
+
+textarea[readonly] {
+    opacity: 0.75;
+}
+
+.icon,
+.mode-icon {
+    position: relative;
+    display: inline-block;
+    width: 16px;
+    height: 16px;
+    flex: 0 0 16px;
+}
+
+.icon-plus::before,
+.icon-plus::after {
+    content: '';
+    position: absolute;
+    background: currentColor;
+    border-radius: 1px;
+}
+
+.icon-plus::before {
+    left: 3px;
+    right: 3px;
+    top: 7px;
+    height: 1.5px;
+}
+
+.icon-plus::after {
+    top: 3px;
+    bottom: 3px;
+    left: 7px;
+    width: 1.5px;
+}
+
+.icon-send::before {
+    content: '';
+    position: absolute;
+    left: 7px;
+    top: 4px;
+    width: 2px;
+    height: 10px;
+    background: currentColor;
+    border-radius: 2px;
+}
+
+.icon-send::after {
+    content: '';
+    position: absolute;
+    left: 4px;
+    top: 3px;
+    width: 7px;
+    height: 7px;
+    border-top: 2px solid currentColor;
+    border-left: 2px solid currentColor;
+    transform: rotate(45deg);
+}
+
+.icon-stop::before {
+    content: '';
+    position: absolute;
+    inset: 4px;
+    background: currentColor;
+    border-radius: 1px;
+}
+
+.icon-chevron {
+    width: 12px;
+    height: 12px;
+    flex-basis: 12px;
+}
+
+.icon-chevron::before {
+    content: '';
+    position: absolute;
+    left: 3px;
+    top: 2px;
+    width: 6px;
+    height: 6px;
+    border-right: 1.5px solid currentColor;
+    border-bottom: 1.5px solid currentColor;
+    transform: rotate(45deg);
+}
+
+.mode-menu {
+    position: relative;
+    min-width: 0;
+}
+
+.mode-trigger {
+    max-width: min(230px, 48vw);
+    padding: 0 7px;
+    border-radius: 6px;
+    gap: 6px;
+}
+
+.mode-label {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
     font-weight: 600;
 }
 
-.send:hover {
-    background: var(--vscode-button-hoverBackground);
+.mode-popover {
+    position: absolute;
+    left: 0;
+    bottom: calc(100% + 8px);
+    z-index: 10;
+    width: min(520px, calc(100vw - 32px));
+    max-width: calc(100vw - 32px);
+    padding: 14px;
+    color: var(--vscode-foreground);
+    background: var(--vscode-editorWidget-background, var(--vscode-input-background));
+    border: 1px solid var(--vscode-editorWidget-border, var(--vscode-sideBar-border));
+    border-radius: 10px;
+    box-shadow: 0 12px 32px rgb(0 0 0 / 30%);
 }
 
-.send:disabled,
-textarea:disabled {
-    opacity: 0.65;
-    cursor: not-allowed;
+.mode-popover-header {
+    display: flex;
+    justify-content: space-between;
+    gap: 14px;
+    margin-bottom: 12px;
+    color: var(--vscode-descriptionForeground);
+    font-weight: 600;
+}
+
+.learn-more {
+    padding: 0;
+    border: 0;
+    color: var(--vscode-textLink-foreground);
+    background: transparent;
+    cursor: pointer;
+    font: inherit;
+    font-weight: 600;
+    text-decoration: underline;
+    text-underline-offset: 3px;
+    white-space: nowrap;
+}
+
+.mode-options {
+    display: grid;
+    gap: 4px;
+}
+
+.mode-option {
+    display: grid;
+    grid-template-columns: 24px minmax(0, 1fr) 18px;
+    gap: 10px;
+    align-items: start;
+    width: 100%;
+    padding: 6px 4px;
+    border: 0;
+    border-radius: 6px;
+    color: inherit;
+    background: transparent;
+    text-align: left;
+    cursor: pointer;
+}
+
+.mode-option:hover {
+    background: var(--vscode-list-hoverBackground);
+}
+
+.mode-option-copy {
+    display: grid;
+    gap: 3px;
+    min-width: 0;
+}
+
+.mode-option-title {
+    font-weight: 700;
+}
+
+.mode-option-description {
+    color: var(--vscode-descriptionForeground);
+    line-height: 1.35;
+}
+
+.mode-icon {
+    margin-top: 2px;
+    color: var(--vscode-descriptionForeground);
+}
+
+.mode-icon::before {
+    content: '';
+    position: absolute;
+    inset: 2px;
+    border: 1.5px solid currentColor;
+}
+
+.mode-icon-ask::before {
+    border-radius: 50% 50% 45% 45%;
+}
+
+.mode-icon-approve::before {
+    border-radius: 5px;
+    transform: rotate(45deg) scale(0.82);
+}
+
+.mode-icon-full::before {
+    border-radius: 50% 50% 40% 40%;
+}
+
+.mode-check {
+    position: relative;
+    display: inline-block;
+    width: 16px;
+    height: 16px;
+}
+
+.mode-check.selected::before {
+    content: '';
+    position: absolute;
+    left: 4px;
+    top: 1px;
+    width: 6px;
+    height: 11px;
+    border-right: 2px solid var(--vscode-descriptionForeground);
+    border-bottom: 2px solid var(--vscode-descriptionForeground);
+    transform: rotate(40deg);
+}
+
+.model-pill {
+    max-width: min(190px, 34vw);
+    min-width: 0;
+    padding: 0 8px;
+    color: var(--vscode-descriptionForeground);
+    font-weight: 700;
+    line-height: 30px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
 }

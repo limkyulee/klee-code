@@ -28,7 +28,7 @@
 │   [ 컨텍스트 조회 ]   [ LLM 어댑터 ]  ─────────┼──▶  외부 API (경계 밖)
 │        │                  │                 │       Claude / GPT
 │        ▼                  ▼                 │
-│   [ DB (MySQL/Mongo) ] [ Ollama (로컬) ]     │
+│   [ DB (MongoDB) ]    [ Ollama (로컬) ]     │
 │        │                                    │
 │        ▼                                    │
 │   [ 감사 로그 ]                               │
@@ -47,7 +47,7 @@
 | 백엔드 | Spring Boot, Spring AI |
 | LLM (로컬) | Ollama (`qwen2.5-coder:3b`) |
 | LLM (외부) | Claude, GPT (설정으로 교체) |
-| DB | MySQL / MongoDB |
+| DB | MongoDB |
 | 패키징 | Docker Compose |
 
 ---
@@ -70,7 +70,7 @@
 - [x] **Phase 1** — 프로바이더 교체: `application.yml` 토글, Ollama 연결
 - [ ] **Phase 2** — MCP: 직접 DB 조회 → MCP 서버/도구로 승격
 - [x] **Phase 3** — 컨텍스트 & 감사 로그: 코드 컨텍스트 수집, 로그 저장
-- [ ] **Phase 4** — 온프렘 패키징: docker-compose + 데모 GIF
+- [ ] **Phase 4** — 온프렘 패키징: docker-compose 완료, 데모 GIF 촬영 전
 
 ---
 
@@ -125,7 +125,7 @@ KLEE_CODE_AI_PROVIDER=ollama ./gradlew bootRun
 ### 3. VSCode 확장 설치
 
 ```bash
-cd extension/klee-code
+cd extension
 npm install
 npm run compile
 ```
@@ -142,9 +142,23 @@ VSCode 설정에서 백엔드 URL을 입력합니다.
 
 ### 4. Docker Compose로 전체 기동 (Phase 4)
 
+Compose는 백엔드, MongoDB, Ollama, Ollama 모델 pull 작업을 같은 네트워크에서 실행합니다.
+
 ```bash
-docker compose up -d
+cp .env.example .env
+docker compose up -d --build
+curl http://localhost:8080/chat/status
 ```
+
+기본값은 온프렘 시연용 로컬 모델입니다.
+
+```dotenv
+KLEE_CODE_AI_PROVIDER=ollama
+OLLAMA_MODEL=qwen2.5-coder:3b
+```
+
+외부 모델로 전환해야 할 때만 `.env`에 `KLEE_CODE_AI_PROVIDER=anthropic`과 `ANTHROPIC_API_KEY`를 설정합니다.
+데모 GIF/영상 촬영 절차는 [docs/demo.md](docs/demo.md)에 정리되어 있습니다.
 
 ---
 
@@ -158,7 +172,7 @@ docker compose up -d
 
 ## 설계 결정 요약
 
-전체 아키텍처 결정 근거(ADR)는 [design.md](design.md)에 기록되어 있습니다.
+전체 아키텍처 결정 근거(ADR)는 [DESIGN.md](DESIGN.md)에 기록되어 있습니다.
 
 - **ADR-1**: 클라이언트-서버 분리 — 정책 강제 지점을 서버 한 곳으로 집중
 - **ADR-2**: Spring AI `ChatClient` 추상화 — `application.yml`만 바꿔 프로바이더 교체
@@ -171,7 +185,7 @@ docker compose up -d
 
 - VS Code Marketplace 등록 URL *(Phase 4 완료 후 추가)*
 - GitHub 레포: 이 문서 + docker-compose + 데모 GIF
-- 데모 영상 *(Phase 4 완료 후 추가)*
+- 데모 영상/GIF *(촬영 후 추가)*
 
 ---
 

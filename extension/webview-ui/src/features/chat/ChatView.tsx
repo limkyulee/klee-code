@@ -9,6 +9,7 @@ export function ChatView() {
     const [messages, dispatch] = useReducer(messageReducer, []);
     const [pending, setPending] = useState(false);
     const [status, setStatus] = useState('Connecting...');
+    const [modelLabel, setModelLabel] = useState('AI Model');
 
     useEffect(() => {
         function handleMessage(event: MessageEvent<ExtensionToWebviewMessage>) {
@@ -17,6 +18,7 @@ export function ChatView() {
             switch (message.type) {
                 case 'STATUS':
                     setStatus(`Backend: ${message.payload.backendUrl}`);
+                    setModelLabel(message.payload.model ?? message.payload.provider ?? 'AI Model');
                     return;
                 case 'REQUEST_STARTED':
                     setPending(true);
@@ -30,6 +32,15 @@ export function ChatView() {
                             streaming: true,
                         },
                     });
+                    return;
+                case 'REQUEST_STOPPED':
+                    setPending(false);
+                    dispatch({
+                        type: 'appendProgress',
+                        id: message.payload.messageId,
+                        text: 'Response stopped.',
+                    });
+                    dispatch({ type: 'finish', id: message.payload.messageId });
                     return;
                 case 'PROGRESS_DELTA':
                     dispatch({
@@ -82,25 +93,26 @@ export function ChatView() {
         vscode.postMessage({ type: 'NEW_CONVERSATION' });
     }
 
+    function stopGeneration() {
+        vscode.postMessage({ type: 'STOP_GENERATION' });
+    }
+
     return (
         <div className="shell">
             <header>
                 <div className="toolbar">
                     <div className="title">Klee Code</div>
-                    <button
-                        aria-label="New conversation"
-                        className="icon-button"
-                        onClick={newConversation}
-                        title="New conversation"
-                        type="button"
-                    >
-                        +
-                    </button>
                 </div>
                 <div className="status">{status}</div>
             </header>
             <MessageList messages={messages} />
-            <ChatInput disabled={pending} onSend={sendMessage} />
+            <ChatInput
+                modelLabel={modelLabel}
+                pending={pending}
+                onNewConversation={newConversation}
+                onSend={sendMessage}
+                onStop={stopGeneration}
+            />
         </div>
     );
 }

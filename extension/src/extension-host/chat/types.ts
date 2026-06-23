@@ -38,3 +38,12 @@ export interface ChatResponse {
     /** LLM 이 생성한 응답 텍스트 */
     answer: string;
 }
+
+/** GET /chat/status 응답 바디 */
+export interface ChatStatus {
+    /** Spring AI provider 이름 */
+    provider: string;
+
+    /** provider 별 실제 모델 이름 */
+    model: string;
+}

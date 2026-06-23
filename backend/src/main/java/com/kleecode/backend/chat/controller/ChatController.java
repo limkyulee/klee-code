@@ -2,18 +2,22 @@ package com.kleecode.backend.chat.controller;
 
 import com.kleecode.backend.chat.dto.ChatRequest;
 import com.kleecode.backend.chat.dto.ChatResponse;
+import com.kleecode.backend.chat.dto.ChatStatus;
 import com.kleecode.backend.chat.service.ChatService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
+import reactor.core.Disposable;
 import tools.jackson.databind.json.JsonMapper;
 
 import java.io.IOException;
+import java.util.concurrent.atomic.AtomicReference;
 
 /**
  * 채팅 API 컨트롤러.
@@ -32,6 +36,11 @@ public class ChatController {
 
     private final ChatService chatService;
     private final JsonMapper jsonMapper;
+
+    @GetMapping("/status")
+    public ResponseEntity<ChatStatus> status() {
+        return ResponseEntity.ok(chatService.status());
+    }
 
     /**
      * 질문을 LLM 에 전달하고 응답을 반환한다.
@@ -57,11 +66,16 @@ public class ChatController {
     @PostMapping(path = "/stream", produces = MediaType.TEXT_EVENT_STREAM_VALUE)
     public SseEmitter stream(@RequestBody ChatRequest request) {
         SseEmitter emitter = new SseEmitter(0L);
+        AtomicReference<Disposable> subscriptionRef = new AtomicReference<>();
+
+        emitter.onCompletion(() -> disposeSubscription(subscriptionRef));
+        emitter.onError(ex -> disposeSubscription(subscriptionRef));
+        emitter.onTimeout(() -> disposeSubscription(subscriptionRef));
 
         sendEvent(emitter, "progress", "Request received. Preparing prompt and conversation memory...");
 
-        chatService.stream(request)
-                .doOnSubscribe(subscription ->
+        subscriptionRef.set(chatService.stream(request)
+                .doOnSubscribe(ignored ->
                         sendEvent(emitter, "progress", "Model stream opened. Receiving tokens..."))
                 .subscribe(
                         token -> sendEvent(emitter, "token", token),
@@ -71,9 +85,16 @@ public class ChatController {
                             sendEvent(emitter, "done", "");
                             emitter.complete();
                         }
-                );
+                ));
 
         return emitter;
+    }
+
+    private void disposeSubscription(AtomicReference<Disposable> subscription) {
+        Disposable disposable = subscription.getAndSet(null);
+        if (disposable != null && !disposable.isDisposed()) {
+            disposable.dispose();
+        }
     }
 
     private void sendEvent(SseEmitter emitter, String name, String data) {

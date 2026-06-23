@@ -18,6 +18,9 @@ export const API_CHAT = '/chat';
 /** POST /chat/stream SSE 엔드포인트 경로 */
 export const API_CHAT_STREAM = '/chat/stream';
 
+/** GET /chat/status 엔드포인트 경로 */
+export const API_CHAT_STATUS = '/chat/status';
+
 /* ────── UI 텍스트 ────── */
 
 /** VS Code 출력 채널 이름 */

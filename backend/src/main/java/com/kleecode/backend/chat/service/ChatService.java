@@ -3,6 +3,7 @@ package com.kleecode.backend.chat.service;
 import com.kleecode.backend.audit.dto.AuditLog;
 import com.kleecode.backend.audit.service.AuditLogService;
 import com.kleecode.backend.chat.dto.ChatRequest;
+import com.kleecode.backend.chat.dto.ChatStatus;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.ai.chat.client.ChatClient;
@@ -41,6 +42,16 @@ public class ChatService {
 
     @Value("${spring.ai.model.chat:anthropic}")
     private String modelProvider;
+
+    @Value("${spring.ai.anthropic.chat.model:}")
+    private String anthropicModel;
+
+    @Value("${spring.ai.ollama.chat.model:}")
+    private String ollamaModel;
+
+    public ChatStatus status() {
+        return new ChatStatus(modelProvider, currentModelName());
+    }
 
     /**
      * LLM 에 질문을 보내고 응답 텍스트를 반환한다.
@@ -133,5 +144,17 @@ public class ChatService {
 
     private boolean isExternalTransfer() {
         return !"ollama".equalsIgnoreCase(modelProvider);
+    }
+
+    private String currentModelName() {
+        if ("ollama".equalsIgnoreCase(modelProvider) && ollamaModel != null && !ollamaModel.isBlank()) {
+            return ollamaModel;
+        }
+
+        if ("anthropic".equalsIgnoreCase(modelProvider) && anthropicModel != null && !anthropicModel.isBlank()) {
+            return anthropicModel;
+        }
+
+        return modelProvider;
     }
 }

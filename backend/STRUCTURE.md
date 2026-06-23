@@ -6,6 +6,8 @@
 
 ```text
 backend/
+├── Dockerfile
+├── .dockerignore
 ├── build.gradle
 ├── settings.gradle
 ├── gradlew
@@ -27,6 +29,8 @@ backend/
 ## 루트 파일
 
 - `build.gradle`: Spring Boot, Java toolchain, Spring AI, MongoDB, Web MVC, 테스트 의존성을 정의합니다.
+- `Dockerfile`: Phase 4 온프렘 패키징을 위한 백엔드 컨테이너 이미지를 빌드합니다.
+- `.dockerignore`: Docker 빌드 컨텍스트에서 Gradle 캐시와 빌드 산출물을 제외합니다.
 - `settings.gradle`: Gradle 루트 프로젝트 이름을 `backend`로 지정합니다.
 - `gradlew`, `gradlew.bat`: 로컬 Gradle 설치 없이 빌드와 테스트를 실행하기 위한 Gradle Wrapper 실행 파일입니다.
 - `gradle/wrapper/gradle-wrapper.jar`: Gradle Wrapper 런타임 파일입니다.

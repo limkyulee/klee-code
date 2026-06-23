@@ -3,8 +3,8 @@
  */
 
 import { getBackendUrl } from '../config/settings';
-import { API_CHAT, API_CHAT_STREAM } from '../constants';
-import type { ChatRequest, ChatResponse } from '../chat/types';
+import { API_CHAT, API_CHAT_STATUS, API_CHAT_STREAM } from '../constants';
+import type { ChatRequest, ChatResponse, ChatStatus } from '../chat/types';
 
 export async function sendChatMessage(request: ChatRequest): Promise<ChatResponse> {
     const url = `${getBackendUrl()}${API_CHAT}`;
@@ -28,7 +28,23 @@ export interface ChatStreamHandlers {
     onDone?(): void | Promise<void>;
 }
 
-export async function sendChatMessageStream(request: ChatRequest, handlers: ChatStreamHandlers): Promise<void> {
+export async function getChatStatus(): Promise<ChatStatus> {
+    const url = `${getBackendUrl()}${API_CHAT_STATUS}`;
+
+    const response = await fetch(url);
+
+    if (!response.ok) {
+        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+    }
+
+    return response.json() as Promise<ChatStatus>;
+}
+
+export async function sendChatMessageStream(
+    request: ChatRequest,
+    handlers: ChatStreamHandlers,
+    signal?: AbortSignal,
+): Promise<void> {
     const url = `${getBackendUrl()}${API_CHAT_STREAM}`;
 
     const response = await fetch(url, {
@@ -38,6 +54,7 @@ export async function sendChatMessageStream(request: ChatRequest, handlers: Chat
             'Content-Type': 'application/json',
         },
         body: JSON.stringify(request),
+        signal,
     });
 
     if (!response.ok) {

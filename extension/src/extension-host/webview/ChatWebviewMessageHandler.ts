@@ -1,16 +1,19 @@
 import * as vscode from 'vscode';
 import { randomUUID } from 'crypto';
-import { sendChatMessageStream } from '../services/chatApiClient';
+import { getChatStatus, sendChatMessageStream } from '../services/chatApiClient';
 import { getBackendUrl } from '../config/settings';
 import { buildChatRequest } from '../chat/context';
 
 export type WebviewMessage =
     | { type: 'WEBVIEW_READY' }
     | { type: 'SEND_MESSAGE'; payload: { text: string } }
+    | { type: 'STOP_GENERATION' }
     | { type: 'NEW_CONVERSATION' };
 
 export class ChatWebviewMessageHandler {
     private conversationId = randomUUID();
+    private activeAbortController: AbortController | undefined;
+    private activeMessageId: string | undefined;
 
     constructor(private readonly postMessage: (message: Record<string, unknown>) => Thenable<boolean>) {}
 
@@ -25,6 +28,9 @@ export class ChatWebviewMessageHandler {
             case 'SEND_MESSAGE':
                 await this.ask(message.payload.text);
                 return;
+            case 'STOP_GENERATION':
+                this.stopActiveRequest();
+                return;
         }
     }
 
@@ -34,6 +40,7 @@ export class ChatWebviewMessageHandler {
     }
 
     async resetConversation(): Promise<void> {
+        this.abortActiveRequestWithoutNotification();
         this.conversationId = randomUUID();
         await this.postMessage({ type: 'CONVERSATION_RESET' });
     }
@@ -45,7 +52,14 @@ export class ChatWebviewMessageHandler {
             return;
         }
 
+        if (this.activeAbortController) {
+            return;
+        }
+
         const assistantMessageId = randomUUID();
+        const abortController = new AbortController();
+        this.activeAbortController = abortController;
+        this.activeMessageId = assistantMessageId;
 
         await this.postMessage({ type: 'REQUEST_STARTED', payload: { messageId: assistantMessageId } });
 
@@ -74,8 +88,19 @@ export class ChatWebviewMessageHandler {
                         });
                     },
                 },
+                abortController.signal,
             );
         } catch (err) {
+            if (isAbortError(err)) {
+                if (this.activeMessageId === assistantMessageId) {
+                    await this.postMessage({
+                        type: 'REQUEST_STOPPED',
+                        payload: { messageId: assistantMessageId },
+                    });
+                }
+                return;
+            }
+
             const message = err instanceof Error ? err.message : String(err);
             await this.postMessage({
                 type: 'ERROR',
@@ -84,13 +109,41 @@ export class ChatWebviewMessageHandler {
                     message,
                 },
             });
+        } finally {
+            if (this.activeAbortController === abortController) {
+                this.activeAbortController = undefined;
+                this.activeMessageId = undefined;
+            }
         }
     }
 
     private async postBackendStatus(): Promise<void> {
-        await this.postMessage({
-            type: 'STATUS',
-            payload: { backendUrl: getBackendUrl() },
-        });
+        try {
+            const status = await getChatStatus();
+            await this.postMessage({
+                type: 'STATUS',
+                payload: { backendUrl: getBackendUrl(), provider: status.provider, model: status.model },
+            });
+        } catch {
+            await this.postMessage({
+                type: 'STATUS',
+                payload: { backendUrl: getBackendUrl() },
+            });
+        }
     }
+
+    private stopActiveRequest(): void {
+        this.activeAbortController?.abort();
+    }
+
+    private abortActiveRequestWithoutNotification(): void {
+        const abortController = this.activeAbortController;
+        this.activeAbortController = undefined;
+        this.activeMessageId = undefined;
+        abortController?.abort();
+    }
+}
+
+function isAbortError(err: unknown): boolean {
+    return err instanceof Error && err.name === 'AbortError';
 }

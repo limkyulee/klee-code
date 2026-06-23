@@ -169,7 +169,8 @@ DB는 MongoDB로 확정 — ChatMemory 백엔드 자동 지원(`ai_chat_memory` 
 - **Phase 1 완료** — 프로바이더 교체: `spring.ai.model.chat` 토글, Ollama 로컬 모델 연결.
 - **Phase 2** — MCP: 직접 조회를 MCP 서버/도구로 승격.
 - **Phase 3 완료** — 컨텍스트 & 감사 로그: 코드 컨텍스트 수집, 로그 저장.
-- **Phase 4** — 온프렘 패키징: docker-compose(백엔드 + Ollama + DB), 데모 영상/GIF.
+- **Phase 4 진행 중** — 온프렘 패키징: docker-compose(백엔드 + Ollama + DB)는 구성 완료.
+  데모 영상/GIF는 실제 VS Code 확장 실행 화면 촬영 후 증거 묶음에 추가.
 
 ---
 
@@ -179,7 +180,7 @@ DB는 MongoDB로 확정 — ChatMemory 백엔드 자동 지원(`ai_chat_memory` 
 
 | # | 증상 | 원인 | 해결 |
 |---|------|------|------|
-| 1 | | | |
+| 1 | Docker Compose 전체 기동으로 바꾸면 기존 `start.sh`가 백엔드까지 compose로 띄운 뒤 로컬 JAR도 다시 실행할 위험 | `docker-compose.yml`이 Phase 4 전에는 MongoDB만 담당했기 때문 | `start.sh`는 로컬 개발용으로 `mongodb` 서비스만 지정해 실행하고, 전체 온프렘 스택은 `docker compose up -d --build`로 분리 |
 | 2 | | | |
 | 3 | | | |
 
@@ -190,10 +191,12 @@ DB는 MongoDB로 확정 — ChatMemory 백엔드 자동 지원(`ai_chat_memory` 
 > 트레이드오프를 솔직하게. 효과뿐 아니라 한계를 적는 것이 신뢰를 준다.
 
 - 효과:
+  - Docker Compose 하나로 백엔드, MongoDB, Ollama, 모델 다운로드 작업을 같은 네트워크에 묶어 온프렘 데모 재현성이 좋아졌다.
 - 한계:
   - **인증 공백**: Spring Security 미적용 상태. ADR-4의 감사 로그에 기록되는 "사용자" 신원이
     사내 SSO 연동 전까지는 확장이 헤더로 보낸 값을 그대로 신뢰하는 수준이다.
     ADR-4의 본문 마스킹 한계와 같은 맥락 — 인지하고 있음을 명시.
+  - **데모 증거 미촬영**: 패키징은 완료했지만 GIF/영상은 실제 VS Code Extension Development Host 화면에서 별도 촬영해야 한다.
 - 다음에 한다면:
 
 ---
@@ -205,6 +208,7 @@ DB는 MongoDB로 확정 — ChatMemory 백엔드 자동 지원(`ai_chat_memory` 
   → self-host 설계 그 자체이자, 타인이 내 키로 비용 태우는 것 방지.
 - 백엔드는 데모 시 로컬 기동, 작동 화면을 영상/GIF로 기록.
 - 증거 묶음: 마켓 등록 URL + GitHub 레포(이 문서 + docker-compose + 데모 GIF) + 데모 영상.
+  현재 데모 촬영 절차는 `docs/demo.md`에 둔다.
 
 
 ## 10. 서비스 업데이트

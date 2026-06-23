@@ -2,6 +2,7 @@
 # 한 번 올라가면 깃 히스토리에 영원히 남으니 처음부터 차단
 .env
 .env.*
+!.env.example
 *.local
 **/application-local.yml
 **/application-local.yaml

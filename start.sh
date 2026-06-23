@@ -45,7 +45,7 @@ require_node_version
 # 1. MongoDB (Docker Compose)
 echo ""
 echo "[1/3] Starting MongoDB..."
-docker compose -f "$ROOT_DIR/docker-compose.yml" up -d
+docker compose -f "$ROOT_DIR/docker-compose.yml" up -d mongodb
 echo "MongoDB started."
 
 # 2. Backend (Spring Boot)
@@ -111,4 +111,4 @@ echo "  code $EXTENSION_DIR"
 echo "  Then press F5 in VSCode and open the Klee Code icon in the new window."
 echo ""
 echo "To stop backend: lsof -n -i4TCP:8080 | kill -9 {PID}"
-echo "To stop MongoDB: docker compose -f $ROOT_DIR/docker-compose.yml down"
+echo "To stop local Compose services: docker compose -f $ROOT_DIR/docker-compose.yml down"
