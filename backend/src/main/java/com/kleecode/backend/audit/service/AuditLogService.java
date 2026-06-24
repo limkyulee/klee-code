@@ -1,6 +1,7 @@
 package com.kleecode.backend.audit.service;
 
 import com.kleecode.backend.audit.dto.AuditLog;
+import com.kleecode.backend.audit.dto.AuditLogStatus;
 import com.kleecode.backend.audit.dto.ChatHistoryItem;
 import com.kleecode.backend.audit.repository.AuditLogRepository;
 import com.kleecode.backend.chat.dto.ChatRequest;
@@ -9,7 +10,11 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.dao.DataAccessException;
 import org.springframework.stereotype.Service;
 
+import java.time.Instant;
+import java.util.Comparator;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 
 /**
@@ -43,15 +48,21 @@ public class AuditLogService {
     }
 
     public List<ChatHistoryItem> recentChatHistory(String userId) {
-        return auditLogRepository.findTop30ByUserIdOrderByCreatedAtDesc(userId)
+        Map<String, ConversationSummary> summaries = new LinkedHashMap<>();
+
+        for (AuditLog log : auditLogRepository.findByUserIdOrderByCreatedAtDesc(userId)) {
+            if (log.conversationId() == null || log.conversationId().isBlank()) {
+                continue;
+            }
+
+            summaries.computeIfAbsent(log.conversationId(), ConversationSummary::new).accept(log);
+        }
+
+        return summaries.values()
                 .stream()
-                .map(log -> new ChatHistoryItem(
-                        log.id(),
-                        log.conversationId(),
-                        titleFromQuestion(log.question()),
-                        log.status(),
-                        log.createdAt(),
-                        log.completedAt()))
+                .sorted(Comparator.comparing(ConversationSummary::updatedAt).reversed())
+                .limit(30)
+                .map(ConversationSummary::toHistoryItem)
                 .toList();
     }
 
@@ -74,5 +85,65 @@ public class AuditLogService {
 
         String compact = question.replaceAll("\\s+", " ").trim();
         return compact.length() <= 80 ? compact : compact.substring(0, 77) + "...";
+    }
+
+    private class ConversationSummary {
+        private final String conversationId;
+        private String title = "Untitled conversation";
+        private AuditLogStatus status = AuditLogStatus.STARTED;
+        private Instant createdAt;
+        private Instant latestTurnCreatedAt;
+        private Instant updatedAt;
+        private long turnCount;
+
+        private ConversationSummary(String conversationId) {
+            this.conversationId = conversationId;
+        }
+
+        private void accept(AuditLog log) {
+            turnCount++;
+
+            if (createdAt == null || isBefore(log.createdAt(), createdAt)) {
+                createdAt = log.createdAt();
+                title = titleFromQuestion(log.question());
+            }
+
+            Instant logUpdatedAt = log.completedAt() == null ? log.createdAt() : log.completedAt();
+            if (updatedAt == null || isAfter(logUpdatedAt, updatedAt)) {
+                updatedAt = logUpdatedAt;
+            }
+
+            if (latestTurnCreatedAt == null || isAfterOrEqual(log.createdAt(), latestTurnCreatedAt)) {
+                latestTurnCreatedAt = log.createdAt();
+                status = log.status();
+            }
+        }
+
+        private Instant updatedAt() {
+            return updatedAt == null ? Instant.EPOCH : updatedAt;
+        }
+
+        private ChatHistoryItem toHistoryItem() {
+            return new ChatHistoryItem(
+                    conversationId,
+                    conversationId,
+                    title,
+                    status,
+                    createdAt,
+                    updatedAt,
+                    turnCount);
+        }
+
+        private boolean isBefore(Instant candidate, Instant baseline) {
+            return candidate != null && (baseline == null || candidate.isBefore(baseline));
+        }
+
+        private boolean isAfter(Instant candidate, Instant baseline) {
+            return candidate != null && (baseline == null || candidate.isAfter(baseline));
+        }
+
+        private boolean isAfterOrEqual(Instant candidate, Instant baseline) {
+            return candidate != null && (baseline == null || !candidate.isBefore(baseline));
+        }
     }
 }

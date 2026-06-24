@@ -43,5 +43,6 @@ export interface ChatHistoryItem {
     title: string;
     status: 'STARTED' | 'SUCCEEDED' | 'FAILED';
     createdAt: string;
-    completedAt?: string;
+    updatedAt: string;
+    turnCount: number;
 }

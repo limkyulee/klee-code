@@ -9,5 +9,5 @@ import java.util.List;
  * 감사 로그 MongoDB 저장소.
  */
 public interface AuditLogRepository extends MongoRepository<AuditLog, String> {
-    List<AuditLog> findTop30ByUserIdOrderByCreatedAtDesc(String userId);
+    List<AuditLog> findByUserIdOrderByCreatedAtDesc(String userId);
 }

@@ -8,6 +8,7 @@ public record ChatHistoryItem(
         String title,
         AuditLogStatus status,
         Instant createdAt,
-        Instant completedAt
+        Instant updatedAt,
+        long turnCount
 ) {
 }

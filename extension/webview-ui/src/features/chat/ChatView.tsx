@@ -273,11 +273,11 @@ function HistoryPopover({ auth, history }: { auth: AuthState; history: ChatHisto
             ) : (
                 <div className="history-list">
                     {filteredHistory.map((item) => (
-                        <button className="history-item" key={item.id} type="button">
+                        <button className="history-item" key={item.conversationId} type="button">
                             <span className="history-title">{item.title}</span>
                             <span className="history-meta">
                                 {item.status === 'FAILED' ? <span className="history-failed">Failed</span> : null}
-                                <span>{formatRelativeTime(item.completedAt ?? item.createdAt)}</span>
+                                <span>{formatRelativeTime(item.updatedAt)}</span>
                             </span>
                         </button>
                     ))}
