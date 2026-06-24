@@ -44,10 +44,11 @@ class AuditLogServiceTest {
                 )
         );
 
-        var saved = auditLogService.start(request, "anthropic", true);
+        var saved = auditLogService.start("user-1", request, "anthropic", true);
 
         assertTrue(saved.isPresent());
         assertEquals(AuditLogStatus.STARTED, saved.get().status());
+        assertEquals("user-1", saved.get().userId());
         assertEquals("conversation-1", saved.get().conversationId());
         assertEquals("selected code", saved.get().selectedText());
         assertEquals("/workspace/src/example.ts", saved.get().filePath());
@@ -60,7 +61,7 @@ class AuditLogServiceTest {
 
         ChatRequest request = new ChatRequest("conversation-2", null, "Explain this", null);
 
-        var saved = auditLogService.start(request, "ollama", false);
+        var saved = auditLogService.start("user-2", request, "ollama", false);
         var updated = auditLogService.markSucceeded(saved, "answer");
 
         assertTrue(saved.isPresent());
@@ -77,7 +78,7 @@ class AuditLogServiceTest {
 
         ChatRequest request = new ChatRequest("conversation-3", null, "Explain this", null);
 
-        var saved = auditLogService.start(request, "anthropic", true);
+        var saved = auditLogService.start("user-3", request, "anthropic", true);
         var updated = auditLogService.markFailed(saved, "boom");
 
         assertTrue(saved.isPresent());

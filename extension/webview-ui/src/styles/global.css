@@ -21,6 +21,7 @@ body {
 }
 
 button,
+input,
 textarea {
     font: inherit;
 }
@@ -37,7 +38,7 @@ textarea {
     align-items: center;
     justify-content: space-between;
     gap: 8px;
-    padding: 10px 10px 8px;
+    padding: 6px 8px;
     border-bottom: 1px solid var(--vscode-sideBar-border);
 }
 
@@ -47,6 +48,367 @@ textarea {
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
+}
+
+.header-actions {
+    position: relative;
+    display: flex;
+    align-items: center;
+    gap: 2px;
+    flex: 0 0 auto;
+}
+
+.header-icon-button {
+    display: inline-grid;
+    place-items: center;
+    width: 24px;
+    height: 24px;
+    padding: 0;
+    color: var(--vscode-icon-foreground, var(--vscode-descriptionForeground));
+    background: transparent;
+    border: 1px solid transparent;
+    border-radius: 4px;
+    cursor: pointer;
+}
+
+.header-icon-button:hover,
+.header-icon-button[aria-expanded='true'] {
+    color: var(--vscode-foreground);
+    background: var(--vscode-toolbar-hoverBackground, var(--vscode-list-hoverBackground));
+}
+
+.header-icon {
+    position: relative;
+    display: inline-block;
+    width: 15px;
+    height: 15px;
+}
+
+.icon-history::before {
+    content: '';
+    position: absolute;
+    inset: 3px;
+    border: 1.5px solid currentColor;
+    border-radius: 50%;
+}
+
+.icon-history::after {
+    content: '';
+    position: absolute;
+    left: 7px;
+    top: 4px;
+    width: 4px;
+    height: 4px;
+    border-left: 1.5px solid currentColor;
+    border-bottom: 1.5px solid currentColor;
+}
+
+.icon-gear::before {
+    content: '';
+    position: absolute;
+    inset: 3px;
+    border: 1.5px solid currentColor;
+    border-radius: 50%;
+    box-shadow:
+        0 -4px 0 -2px currentColor,
+        0 4px 0 -2px currentColor,
+        4px 0 0 -2px currentColor,
+        -4px 0 0 -2px currentColor;
+}
+
+.icon-gear::after {
+    content: '';
+    position: absolute;
+    inset: 6px;
+    border: 1.5px solid currentColor;
+    border-radius: 50%;
+}
+
+.icon-compose::before {
+    content: '';
+    position: absolute;
+    left: 2px;
+    bottom: 2px;
+    width: 9px;
+    height: 9px;
+    border: 1.5px solid currentColor;
+    border-radius: 2px;
+}
+
+.icon-compose::after {
+    content: '';
+    position: absolute;
+    right: 2px;
+    top: 2px;
+    width: 8px;
+    height: 2px;
+    background: currentColor;
+    border-radius: 2px;
+    transform: rotate(-45deg);
+    transform-origin: center;
+}
+
+.header-popover {
+    position: absolute;
+    top: calc(100% + 8px);
+    right: 0;
+    z-index: 20;
+    width: min(470px, calc(100vw - 18px));
+    max-height: min(520px, calc(100vh - 88px));
+    overflow: hidden;
+    color: var(--vscode-foreground);
+    background: var(--vscode-editorWidget-background, var(--vscode-sideBar-background));
+    border: 1px solid var(--vscode-editorWidget-border, var(--vscode-sideBar-border));
+    border-radius: 8px;
+    box-shadow: 0 14px 30px rgb(0 0 0 / 38%);
+}
+
+.history-popover {
+    display: grid;
+    grid-template-rows: auto auto minmax(0, 1fr);
+    padding: 10px;
+}
+
+.history-search {
+    display: grid;
+    grid-template-columns: 18px minmax(0, 1fr);
+    align-items: center;
+    height: 28px;
+    border-bottom: 1px solid var(--vscode-sideBar-border);
+    color: var(--vscode-descriptionForeground);
+}
+
+.history-search input {
+    min-width: 0;
+    height: 24px;
+    padding: 0;
+    color: var(--vscode-input-foreground);
+    background: transparent;
+    border: 0;
+}
+
+.history-search input:focus {
+    outline: 0;
+}
+
+.history-search-icon {
+    position: relative;
+    width: 13px;
+    height: 13px;
+}
+
+.history-search-icon::before {
+    content: '';
+    position: absolute;
+    left: 1px;
+    top: 1px;
+    width: 7px;
+    height: 7px;
+    border: 1.4px solid currentColor;
+    border-radius: 50%;
+}
+
+.history-search-icon::after {
+    content: '';
+    position: absolute;
+    right: 1px;
+    bottom: 2px;
+    width: 5px;
+    height: 1.4px;
+    background: currentColor;
+    transform: rotate(45deg);
+}
+
+.history-filter-row {
+    display: flex;
+    justify-content: space-between;
+    padding: 10px 0 4px;
+}
+
+.plain-menu-button {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 0;
+    color: var(--vscode-descriptionForeground);
+    background: transparent;
+    border: 0;
+    cursor: pointer;
+}
+
+.history-list {
+    display: grid;
+    gap: 1px;
+    overflow-y: auto;
+    min-height: 0;
+}
+
+.history-item {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-items: center;
+    gap: 12px;
+    width: 100%;
+    min-height: 24px;
+    padding: 3px 0;
+    color: inherit;
+    background: transparent;
+    border: 0;
+    border-radius: 4px;
+    text-align: left;
+    cursor: pointer;
+}
+
+.history-item:hover {
+    background: var(--vscode-list-hoverBackground);
+}
+
+.history-title {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    font-weight: 600;
+}
+
+.history-meta {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    color: var(--vscode-descriptionForeground);
+    font-size: 12px;
+}
+
+.history-failed {
+    color: var(--vscode-errorForeground);
+}
+
+.popover-empty {
+    padding: 18px 4px 10px;
+    color: var(--vscode-descriptionForeground);
+    line-height: 1.45;
+}
+
+.settings-popover {
+    width: min(300px, calc(100vw - 18px));
+    padding: 10px;
+}
+
+.account-lines {
+    display: grid;
+    gap: 8px;
+}
+
+.account-line,
+.settings-menu-item {
+    display: grid;
+    grid-template-columns: 18px minmax(0, 1fr);
+    align-items: center;
+    gap: 8px;
+    min-height: 22px;
+}
+
+.account-line {
+    color: var(--vscode-foreground);
+}
+
+.account-line.muted {
+    color: var(--vscode-descriptionForeground);
+}
+
+.settings-divider {
+    height: 1px;
+    margin: 10px 0;
+    background: var(--vscode-sideBar-border);
+}
+
+.settings-menu-item {
+    width: 100%;
+    padding: 3px 0;
+    color: inherit;
+    background: transparent;
+    border: 0;
+    border-radius: 4px;
+    text-align: left;
+    cursor: pointer;
+}
+
+.settings-menu-item:hover {
+    background: var(--vscode-list-hoverBackground);
+}
+
+.settings-icon {
+    position: relative;
+    display: inline-block;
+    width: 14px;
+    height: 14px;
+    color: var(--vscode-descriptionForeground);
+}
+
+.icon-user::before {
+    content: '';
+    position: absolute;
+    left: 4px;
+    top: 2px;
+    width: 5px;
+    height: 5px;
+    border: 1.3px solid currentColor;
+    border-radius: 50%;
+}
+
+.icon-user::after {
+    content: '';
+    position: absolute;
+    left: 2px;
+    bottom: 1px;
+    width: 9px;
+    height: 5px;
+    border: 1.3px solid currentColor;
+    border-radius: 7px 7px 2px 2px;
+}
+
+.icon-account::before,
+.icon-account::after {
+    content: '';
+    position: absolute;
+    inset: 2px;
+    border: 1.3px solid currentColor;
+    border-radius: 50%;
+}
+
+.icon-account::after {
+    inset: 5px;
+}
+
+.icon-logout::before {
+    content: '';
+    position: absolute;
+    left: 1px;
+    top: 3px;
+    width: 7px;
+    height: 8px;
+    border: 1.3px solid currentColor;
+    border-right: 0;
+    border-radius: 2px;
+}
+
+.icon-logout::after {
+    content: '';
+    position: absolute;
+    right: 1px;
+    top: 6px;
+    width: 7px;
+    height: 1.4px;
+    background: currentColor;
+    box-shadow: 2px -2px 0 -0.5px currentColor, 2px 2px 0 -0.5px currentColor;
+}
+
+.compact-form {
+    gap: 8px;
+}
+
+.form-title {
+    font-weight: 700;
 }
 
 .icon-button {
@@ -63,6 +425,86 @@ textarea {
 
 .icon-button:hover {
     background: var(--vscode-button-hoverBackground);
+}
+
+.primary-button,
+.secondary-button,
+.link-button {
+    min-height: 28px;
+    border-radius: 4px;
+    cursor: pointer;
+}
+
+.primary-button {
+    border: 1px solid var(--vscode-button-border, transparent);
+    color: var(--vscode-button-foreground);
+    background: var(--vscode-button-background);
+}
+
+.primary-button:hover {
+    background: var(--vscode-button-hoverBackground);
+}
+
+.secondary-button {
+    padding: 3px 8px;
+    border: 1px solid var(--vscode-button-secondaryBorder, transparent);
+    color: var(--vscode-button-secondaryForeground);
+    background: var(--vscode-button-secondaryBackground);
+}
+
+.secondary-button:hover {
+    background: var(--vscode-button-secondaryHoverBackground);
+}
+
+.link-button {
+    border: 0;
+    color: var(--vscode-textLink-foreground);
+    background: transparent;
+}
+
+.auth-panel {
+    display: grid;
+    align-content: start;
+    padding: 14px 10px;
+    overflow-y: auto;
+}
+
+.form-stack {
+    display: grid;
+    gap: 10px;
+    width: 100%;
+}
+
+.field {
+    display: grid;
+    gap: 5px;
+    color: var(--vscode-descriptionForeground);
+    font-size: 12px;
+}
+
+.field input {
+    width: 100%;
+    min-width: 0;
+    height: 30px;
+    padding: 4px 7px;
+    color: var(--vscode-input-foreground);
+    background: var(--vscode-input-background);
+    border: 1px solid var(--vscode-input-border, var(--vscode-sideBar-border));
+    border-radius: 4px;
+}
+
+.field input:focus {
+    outline: 1px solid var(--vscode-focusBorder);
+    outline-offset: -1px;
+}
+
+.form-error {
+    padding: 7px 8px;
+    color: var(--vscode-errorForeground);
+    background: var(--vscode-inputValidation-errorBackground, transparent);
+    border: 1px solid var(--vscode-inputValidation-errorBorder, var(--vscode-errorForeground));
+    border-radius: 4px;
+    line-height: 1.35;
 }
 
 .status {

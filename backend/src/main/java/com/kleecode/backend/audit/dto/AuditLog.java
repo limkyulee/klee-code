@@ -13,6 +13,7 @@ import java.time.Instant;
 @Document("audit_logs")
 public record AuditLog(
         @Id String id,
+        @Indexed String userId,
         @Indexed String conversationId,
         @Indexed Instant createdAt,
         @Indexed AuditLogStatus status,
@@ -33,6 +34,7 @@ public record AuditLog(
 ) {
 
     public static AuditLog started(
+            String userId,
             String conversationId,
             String modelProvider,
             boolean externalTransfer,
@@ -41,6 +43,7 @@ public record AuditLog(
     ) {
         return new AuditLog(
                 null,
+                userId,
                 conversationId,
                 Instant.now(),
                 AuditLogStatus.STARTED,
@@ -64,6 +67,7 @@ public record AuditLog(
     public AuditLog markSucceeded(String answer) {
         return new AuditLog(
                 id,
+                userId,
                 conversationId,
                 createdAt,
                 AuditLogStatus.SUCCEEDED,
@@ -87,6 +91,7 @@ public record AuditLog(
     public AuditLog markFailed(String errorMessage) {
         return new AuditLog(
                 id,
+                userId,
                 conversationId,
                 createdAt,
                 AuditLogStatus.FAILED,

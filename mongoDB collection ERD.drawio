@@ -1,0 +1,37 @@
+<mxfile host="app.diagrams.net" modified="2026-06-24T00:00:00.000Z" agent="Codex" version="26.0.0">
+  <diagram id="klee-code-mongodb-erd" name="MongoDB Collection ERD">
+    <mxGraphModel dx="1434" dy="827" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1169" pageHeight="827" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        <mxCell id="users" value="users&#xa;_id&#xa;userId unique&#xa;passwordHash&#xa;roles [USER|ADMIN]&#xa;status&#xa;createdAt&#xa;updatedAt&#xa;lastLoginAt" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;" vertex="1" parent="1">
+          <mxGeometry x="80" y="80" width="210" height="190" as="geometry" />
+        </mxCell>
+        <mxCell id="sessions" value="sessions&#xa;_id&#xa;userId index&#xa;refreshTokenHash unique&#xa;createdAt&#xa;expiresAt TTL&#xa;revokedAt&#xa;lastUsedAt&#xa;userAgent" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;" vertex="1" parent="1">
+          <mxGeometry x="410" y="60" width="230" height="200" as="geometry" />
+        </mxCell>
+        <mxCell id="modelconfigs" value="user_model_configs&#xa;_id&#xa;userId unique&#xa;provider = OLLAMA&#xa;baseUrl&#xa;modelName&#xa;enabled&#xa;createdAt&#xa;updatedAt" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;" vertex="1" parent="1">
+          <mxGeometry x="410" y="310" width="230" height="190" as="geometry" />
+        </mxCell>
+        <mxCell id="auditlogs" value="audit_logs&#xa;_id&#xa;userId index&#xa;conversationId index&#xa;createdAt index&#xa;status index&#xa;modelProvider&#xa;question&#xa;answer&#xa;context fields" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;" vertex="1" parent="1">
+          <mxGeometry x="750" y="110" width="230" height="220" as="geometry" />
+        </mxCell>
+        <mxCell id="memory" value="ai_chat_memory&#xa;Spring AI managed&#xa;conversationId&#xa;message window&#xa;request/response memory" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;" vertex="1" parent="1">
+          <mxGeometry x="750" y="400" width="230" height="150" as="geometry" />
+        </mxCell>
+        <mxCell id="user_sessions" value="userId" style="endArrow=block;html=1;rounded=0;" edge="1" parent="1" source="users" target="sessions">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="user_modelconfigs" value="userId" style="endArrow=block;html=1;rounded=0;" edge="1" parent="1" source="users" target="modelconfigs">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="user_auditlogs" value="userId" style="endArrow=block;html=1;rounded=0;" edge="1" parent="1" source="users" target="auditlogs">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="audit_memory" value="conversationId" style="endArrow=block;html=1;rounded=0;dashed=1;" edge="1" parent="1" source="auditlogs" target="memory">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>

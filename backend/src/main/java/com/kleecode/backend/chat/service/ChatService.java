@@ -4,9 +4,11 @@ import com.kleecode.backend.audit.dto.AuditLog;
 import com.kleecode.backend.audit.service.AuditLogService;
 import com.kleecode.backend.chat.dto.ChatRequest;
 import com.kleecode.backend.chat.dto.ChatStatus;
+import com.kleecode.backend.modelconfig.dto.ModelConfigResponse;
+import com.kleecode.backend.modelconfig.dto.UserModelConfig;
+import com.kleecode.backend.modelconfig.service.ModelConfigService;
 import lombok.RequiredArgsConstructor;
-import org.springframework.beans.factory.annotation.Value;
-import org.springframework.ai.chat.client.ChatClient;
+import org.springframework.ai.chat.prompt.ChatOptions;
 import org.springframework.stereotype.Service;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.SignalType;
@@ -23,8 +25,8 @@ import java.util.concurrent.atomic.AtomicReference;
  * 과거 대화를 MongoDB 에서 읽어 프롬프트에 주입하고,
  * 호출 후 새 턴(질문 + 응답)을 다시 MongoDB 에 저장한다.
  *
- * <p>어떤 모델을 쓰는지(Anthropic / Ollama)는 ChatClient 빈 설정에서 결정되며,
- * 이 클래스는 모델을 직접 알지 못한다 — Phase 1 모델 교체가 이 클래스를 건드리지 않는 이유다.
+ * <p>V2부터 모델 서버는 로그인 사용자의 user_model_configs 설정으로 결정된다.
+ * 설정이 없으면 기본 모델을 대신 쓰지 않고 MODEL_CONFIG_REQUIRED 오류로 차단한다.
  */
 @Slf4j
 @Service
@@ -37,20 +39,17 @@ public class ChatService {
     */
     private static final String CONVERSATION_ID_KEY = "chat_memory_conversation_id";
 
-    private final ChatClient chatClient;
     private final AuditLogService auditLogService;
+    private final ModelConfigService modelConfigService;
+    private final UserOllamaChatClientFactory chatClientFactory;
 
-    @Value("${spring.ai.model.chat:anthropic}")
-    private String modelProvider;
-
-    @Value("${spring.ai.anthropic.chat.model:}")
-    private String anthropicModel;
-
-    @Value("${spring.ai.ollama.chat.model:}")
-    private String ollamaModel;
-
-    public ChatStatus status() {
-        return new ChatStatus(modelProvider, currentModelName());
+    public ChatStatus status(String userId) {
+        ModelConfigResponse config = modelConfigService.findResponse(userId);
+        return new ChatStatus(
+                config.configured(),
+                config.provider() == null ? null : config.provider().name().toLowerCase(),
+                config.modelName()
+        );
     }
 
     /**
@@ -59,14 +58,17 @@ public class ChatService {
      * @param request conversationId, code(선택), question 을 담은 요청 DTO
      * @return LLM 응답 텍스트
      */
-    public String chat(ChatRequest request) {
-        Optional<AuditLog> auditLog = auditLogService.start(request, modelProvider, isExternalTransfer());
+    public String chat(String userId, ChatRequest request) {
+        UserModelConfig modelConfig = modelConfigService.requireConfig(userId);
+        Optional<AuditLog> auditLog = auditLogService.start(userId, request, modelConfig.provider().name().toLowerCase(), false);
 
         /* advisor param 으로 conversationId 를 넘기면 MessageChatMemoryAdvisor 가
            해당 ID 의 과거 대화 이력을 프롬프트 앞에 자동으로 주입한다. */
         try {
-            String answer = chatClient.prompt()
+            String answer = chatClientFactory.create(modelConfig)
+                    .prompt()
                     .user(toUserMessage(request))
+                    .options(ChatOptions.builder().model(modelConfig.modelName()))
                     .advisors(a -> a.param(CONVERSATION_ID_KEY, request.conversationId()))
                     .call()
                     .content();
@@ -85,15 +87,18 @@ public class ChatService {
      * @param request conversationId, code(선택), question 을 담은 요청 DTO
      * @return LLM 응답 텍스트 조각 스트림
      */
-    public Flux<String> stream(ChatRequest request) {
-        Optional<AuditLog> auditLog = auditLogService.start(request, modelProvider, isExternalTransfer());
+    public Flux<String> stream(String userId, ChatRequest request) {
+        UserModelConfig modelConfig = modelConfigService.requireConfig(userId);
+        Optional<AuditLog> auditLog = auditLogService.start(userId, request, modelConfig.provider().name().toLowerCase(), false);
         AtomicReference<StringBuilder> answer = new AtomicReference<>(new StringBuilder());
 
         log.info("Streaming chat request: conversationId={}, question={}", request.conversationId(), request.question());
         log.info("answer reference: {}", answer.get());
 
-        return chatClient.prompt()
+        return chatClientFactory.create(modelConfig)
+                .prompt()
                 .user(toUserMessage(request))
+                .options(ChatOptions.builder().model(modelConfig.modelName()))
                 .advisors(a -> a.param(CONVERSATION_ID_KEY, request.conversationId()))
                 .stream()
                 .content()
@@ -142,19 +147,4 @@ public class ChatService {
         return message.toString();
     }
 
-    private boolean isExternalTransfer() {
-        return !"ollama".equalsIgnoreCase(modelProvider);
-    }
-
-    private String currentModelName() {
-        if ("ollama".equalsIgnoreCase(modelProvider) && ollamaModel != null && !ollamaModel.isBlank()) {
-            return ollamaModel;
-        }
-
-        if ("anthropic".equalsIgnoreCase(modelProvider) && anthropicModel != null && !anthropicModel.isBlank()) {
-            return anthropicModel;
-        }
-
-        return modelProvider;
-    }
 }

@@ -25,6 +25,8 @@ dependencies {
 	implementation 'org.springframework.boot:spring-boot-starter-mongodb'
 	implementation 'org.springframework.ai:spring-ai-starter-model-chat-memory-repository-mongodb'
 	implementation 'org.springframework.boot:spring-boot-starter-webmvc'
+	implementation 'org.springframework.boot:spring-boot-starter-security'
+	implementation 'org.springframework.security:spring-security-oauth2-jose'
 	implementation 'org.springframework.ai:spring-ai-starter-model-anthropic'
 	implementation 'org.springframework.ai:spring-ai-starter-model-ollama'
 	compileOnly 'org.projectlombok:lombok'

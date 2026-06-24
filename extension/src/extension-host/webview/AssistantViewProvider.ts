@@ -1,13 +1,17 @@
 import * as vscode from 'vscode';
 import { getWebviewHtml } from './getWebviewHtml';
 import { ChatWebviewMessageHandler, type WebviewMessage } from './ChatWebviewMessageHandler';
+import { AuthSession } from '../services/authSession';
 
 export class AssistantViewProvider implements vscode.WebviewViewProvider {
     public static readonly viewType = 'klee-code.chatView';
 
     private messageHandler?: ChatWebviewMessageHandler;
 
-    constructor(private readonly extensionUri: vscode.Uri) {}
+    constructor(
+        private readonly extensionUri: vscode.Uri,
+        private readonly secrets: vscode.SecretStorage,
+    ) {}
 
     async askFromInputBox(): Promise<void> {
         await vscode.commands.executeCommand(`${AssistantViewProvider.viewType}.focus`);
@@ -33,7 +37,10 @@ export class AssistantViewProvider implements vscode.WebviewViewProvider {
     }
 
     resolveWebviewView(webviewView: vscode.WebviewView): void {
-        this.messageHandler = new ChatWebviewMessageHandler((message) => webviewView.webview.postMessage(message));
+        this.messageHandler = new ChatWebviewMessageHandler(
+            (message) => webviewView.webview.postMessage(message),
+            new AuthSession(this.secrets),
+        );
 
         webviewView.webview.options = {
             enableScripts: true,

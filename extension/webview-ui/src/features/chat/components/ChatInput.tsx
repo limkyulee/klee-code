@@ -3,6 +3,8 @@ import { FormEvent, KeyboardEvent, useEffect, useRef, useState } from 'react';
 interface ChatInputProps {
     modelLabel: string;
     pending: boolean;
+    disabled?: boolean;
+    disabledReason?: string;
     onNewConversation(): void;
     onSend(text: string): void;
     onStop(): void;
@@ -26,7 +28,15 @@ const approvalModes = [
     },
 ] as const;
 
-export function ChatInput({ modelLabel, pending, onNewConversation, onSend, onStop }: ChatInputProps) {
+export function ChatInput({
+    modelLabel,
+    pending,
+    disabled = false,
+    disabledReason = 'Chat is unavailable',
+    onNewConversation,
+    onSend,
+    onStop,
+}: ChatInputProps) {
     const [text, setText] = useState('');
     const [modeOpen, setModeOpen] = useState(false);
     const [selectedModeId, setSelectedModeId] = useState<(typeof approvalModes)[number]['id']>('ask');
@@ -60,7 +70,7 @@ export function ChatInput({ modelLabel, pending, onNewConversation, onSend, onSt
 
         const trimmedText = text.trim();
 
-        if (!trimmedText || pending) {
+        if (!trimmedText || pending || disabled) {
             return;
         }
 
@@ -88,8 +98,8 @@ export function ChatInput({ modelLabel, pending, onNewConversation, onSend, onSt
             <textarea
                 onChange={(event) => setText(event.target.value)}
                 onKeyDown={handleTextAreaKeyDown}
-                placeholder="Do anything"
-                readOnly={pending}
+                placeholder={disabled ? disabledReason : 'Do anything'}
+                readOnly={pending || disabled}
                 rows={3}
                 value={text}
             />
@@ -159,7 +169,7 @@ export function ChatInput({ modelLabel, pending, onNewConversation, onSend, onSt
                     <button
                         aria-label={pending ? 'Stop response' : 'Send message'}
                         className={`send icon-only${pending ? ' stop' : ''}`}
-                        disabled={!pending && text.trim().length === 0}
+                        disabled={!pending && (disabled || text.trim().length === 0)}
                         onClick={pending ? onStop : undefined}
                         title={pending ? 'Stop response' : 'Send message'}
                         type={pending ? 'button' : 'submit'}

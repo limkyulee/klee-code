@@ -1,11 +1,24 @@
 import * as vscode from 'vscode';
 import { randomUUID } from 'crypto';
-import { getChatStatus, sendChatMessageStream } from '../services/chatApiClient';
+import {
+    ApiError,
+    getChatHistory,
+    getChatStatus,
+    getModelConfig,
+    saveModelConfig,
+    sendChatMessageStream,
+} from '../services/chatApiClient';
 import { getBackendUrl } from '../config/settings';
 import { buildChatRequest } from '../chat/context';
+import { AuthSession } from '../services/authSession';
 
 export type WebviewMessage =
     | { type: 'WEBVIEW_READY' }
+    | { type: 'LOGIN'; payload: { userId: string; password: string } }
+    | { type: 'REGISTER'; payload: { userId: string; password: string } }
+    | { type: 'LOGOUT' }
+    | { type: 'SAVE_MODEL_CONFIG'; payload: { baseUrl: string; modelName: string } }
+    | { type: 'REQUEST_CHAT_HISTORY' }
     | { type: 'SEND_MESSAGE'; payload: { text: string } }
     | { type: 'STOP_GENERATION' }
     | { type: 'NEW_CONVERSATION' };
@@ -15,12 +28,30 @@ export class ChatWebviewMessageHandler {
     private activeAbortController: AbortController | undefined;
     private activeMessageId: string | undefined;
 
-    constructor(private readonly postMessage: (message: Record<string, unknown>) => Thenable<boolean>) {}
+    constructor(
+        private readonly postMessage: (message: Record<string, unknown>) => Thenable<boolean>,
+        private readonly authSession: AuthSession,
+    ) {}
 
     async handle(message: WebviewMessage): Promise<void> {
         switch (message.type) {
             case 'WEBVIEW_READY':
-                await this.postBackendStatus();
+                await this.restoreSession();
+                return;
+            case 'LOGIN':
+                await this.login(message.payload.userId, message.payload.password);
+                return;
+            case 'REGISTER':
+                await this.register(message.payload.userId, message.payload.password);
+                return;
+            case 'LOGOUT':
+                await this.logout();
+                return;
+            case 'SAVE_MODEL_CONFIG':
+                await this.saveModelConfig(message.payload.baseUrl, message.payload.modelName);
+                return;
+            case 'REQUEST_CHAT_HISTORY':
+                await this.postChatHistory();
                 return;
             case 'NEW_CONVERSATION':
                 await this.resetConversation();
@@ -66,30 +97,34 @@ export class ChatWebviewMessageHandler {
         try {
             const editor = vscode.window.activeTextEditor;
             const request = buildChatRequest(editor, this.conversationId, trimmedQuestion);
-            await sendChatMessageStream(
-                request,
-                {
-                    onProgressDelta: async (text) => {
-                        void this.postMessage({
-                            type: 'PROGRESS_DELTA',
-                            payload: { messageId: assistantMessageId, text },
-                        });
+            await this.withAuthorizedRetry((accessToken) =>
+                sendChatMessageStream(
+                    request,
+                    {
+                        onProgressDelta: async (text) => {
+                            void this.postMessage({
+                                type: 'PROGRESS_DELTA',
+                                payload: { messageId: assistantMessageId, text },
+                            });
+                        },
+                        onAnswerDelta: async (text) => {
+                            void this.postMessage({
+                                type: 'ASSISTANT_DELTA',
+                                payload: { messageId: assistantMessageId, text },
+                            });
+                        },
+                        onDone: async () => {
+                            void this.postMessage({
+                                type: 'ASSISTANT_RESPONSE',
+                                payload: { messageId: assistantMessageId },
+                            });
+                        },
                     },
-                    onAnswerDelta: async (text) => {
-                        void this.postMessage({
-                            type: 'ASSISTANT_DELTA',
-                            payload: { messageId: assistantMessageId, text },
-                        });
-                    },
-                    onDone: async () => {
-                        void this.postMessage({
-                            type: 'ASSISTANT_RESPONSE',
-                            payload: { messageId: assistantMessageId },
-                        });
-                    },
-                },
-                abortController.signal,
+                    { accessToken },
+                    abortController.signal,
+                ),
             );
+            await this.postChatHistory();
         } catch (err) {
             if (isAbortError(err)) {
                 if (this.activeMessageId === assistantMessageId) {
@@ -119,10 +154,15 @@ export class ChatWebviewMessageHandler {
 
     private async postBackendStatus(): Promise<void> {
         try {
-            const status = await getChatStatus();
+            const status = await this.withAuthorizedRetry((accessToken) => getChatStatus({ accessToken }));
             await this.postMessage({
                 type: 'STATUS',
-                payload: { backendUrl: getBackendUrl(), provider: status.provider, model: status.model },
+                payload: {
+                    backendUrl: getBackendUrl(),
+                    configured: status.configured,
+                    provider: status.provider,
+                    model: status.model,
+                },
             });
         } catch {
             await this.postMessage({
@@ -142,8 +182,108 @@ export class ChatWebviewMessageHandler {
         this.activeMessageId = undefined;
         abortController?.abort();
     }
+
+    private async restoreSession(): Promise<void> {
+        const user = await this.authSession.restore();
+        if (!user) {
+            await this.postMessage({ type: 'AUTH_REQUIRED' });
+            return;
+        }
+
+        await this.postMessage({ type: 'AUTHENTICATED', payload: { user } });
+        await this.postModelConfig();
+        await this.postBackendStatus();
+        await this.postChatHistory();
+    }
+
+    private async login(userId: string, password: string): Promise<void> {
+        try {
+            const user = await this.authSession.login(userId, password);
+            await this.postMessage({ type: 'AUTHENTICATED', payload: { user } });
+            await this.postModelConfig();
+            await this.postBackendStatus();
+            await this.postChatHistory();
+        } catch (err) {
+            await this.postAuthError(err);
+        }
+    }
+
+    private async register(userId: string, password: string): Promise<void> {
+        try {
+            const user = await this.authSession.register(userId, password);
+            await this.postMessage({ type: 'AUTHENTICATED', payload: { user } });
+            await this.postModelConfig();
+            await this.postBackendStatus();
+            await this.postChatHistory();
+        } catch (err) {
+            await this.postAuthError(err);
+        }
+    }
+
+    private async logout(): Promise<void> {
+        await this.authSession.signOut();
+        this.abortActiveRequestWithoutNotification();
+        await this.postMessage({ type: 'SIGNED_OUT' });
+    }
+
+    private async saveModelConfig(baseUrl: string, modelName: string): Promise<void> {
+        try {
+            const modelConfig = await this.withAuthorizedRetry((accessToken) =>
+                saveModelConfig({ provider: 'OLLAMA', baseUrl, modelName }, { accessToken }),
+            );
+            await this.postMessage({ type: 'MODEL_CONFIG', payload: { modelConfig } });
+            await this.postBackendStatus();
+        } catch (err) {
+            await this.postMessage({ type: 'ERROR', payload: { message: toErrorMessage(err) } });
+        }
+    }
+
+    private async postModelConfig(): Promise<void> {
+        try {
+            const modelConfig = await this.withAuthorizedRetry((accessToken) => getModelConfig({ accessToken }));
+            await this.postMessage({ type: 'MODEL_CONFIG', payload: { modelConfig } });
+        } catch {
+            await this.postMessage({ type: 'MODEL_CONFIG', payload: { modelConfig: { configured: false } } });
+        }
+    }
+
+    private async postChatHistory(): Promise<void> {
+        try {
+            const history = await this.withAuthorizedRetry((accessToken) => getChatHistory({ accessToken }));
+            await this.postMessage({ type: 'CHAT_HISTORY', payload: { history } });
+        } catch {
+            await this.postMessage({ type: 'CHAT_HISTORY', payload: { history: [] } });
+        }
+    }
+
+    private async withAuthorizedRetry<T>(operation: (accessToken: string) => Promise<T>): Promise<T> {
+        const accessToken = await this.authSession.getAccessToken();
+        if (!accessToken) {
+            throw new Error('Sign in is required');
+        }
+
+        try {
+            return await operation(accessToken);
+        } catch (err) {
+            if (err instanceof ApiError && err.status === 401) {
+                const refreshedToken = await this.authSession.refreshAccessToken();
+                if (refreshedToken) {
+                    return operation(refreshedToken);
+                }
+            }
+            throw err;
+        }
+    }
+
+    private async postAuthError(err: unknown): Promise<void> {
+        await this.postMessage({ type: 'AUTH_ERROR', payload: { message: toErrorMessage(err) } });
+    }
 }
 
 function isAbortError(err: unknown): boolean {
     return err instanceof Error && err.name === 'AbortError';
+}
+
+function toErrorMessage(err: unknown): string {
+    return err instanceof Error ? err.message : String(err);
 }

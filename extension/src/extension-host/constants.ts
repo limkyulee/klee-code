@@ -18,6 +18,15 @@ export const API_CHAT = '/chat';
 /** POST /chat/stream SSE 엔드포인트 경로 */
 export const API_CHAT_STREAM = '/chat/stream';
 
+export const API_CHAT_HISTORY = '/audit/chat-history';
+export const API_AUTH_REGISTER = '/auth/register';
+export const API_AUTH_LOGIN = '/auth/login';
+export const API_AUTH_REFRESH = '/auth/refresh';
+export const API_AUTH_LOGOUT = '/auth/logout';
+export const API_AUTH_ME = '/auth/me';
+export const API_MODEL_CONFIG = '/me/model-config';
+export const SECRET_REFRESH_TOKEN_KEY = 'klee-code.refreshToken';
+
 /** GET /chat/status 엔드포인트 경로 */
 export const API_CHAT_STATUS = '/chat/status';
 

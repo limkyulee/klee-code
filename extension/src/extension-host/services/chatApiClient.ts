@@ -3,21 +3,53 @@
  */
 
 import { getBackendUrl } from '../config/settings';
-import { API_CHAT, API_CHAT_STATUS, API_CHAT_STREAM } from '../constants';
-import type { ChatRequest, ChatResponse, ChatStatus } from '../chat/types';
+import {
+    API_AUTH_LOGIN,
+    API_AUTH_LOGOUT,
+    API_AUTH_ME,
+    API_AUTH_REFRESH,
+    API_AUTH_REGISTER,
+    API_CHAT,
+    API_CHAT_HISTORY,
+    API_CHAT_STATUS,
+    API_CHAT_STREAM,
+    API_MODEL_CONFIG,
+} from '../constants';
+import type {
+    AuthResponse,
+    ChatHistoryItem,
+    ChatRequest,
+    ChatResponse,
+    ChatStatus,
+    ModelConfig,
+    UserProfile,
+} from '../chat/types';
 
-export async function sendChatMessage(request: ChatRequest): Promise<ChatResponse> {
+export class ApiError extends Error {
+    constructor(
+        public readonly status: number,
+        public readonly code: string,
+        message: string,
+    ) {
+        super(message);
+        this.name = 'ApiError';
+    }
+}
+
+export interface RequestAuth {
+    accessToken?: string;
+}
+
+export async function sendChatMessage(request: ChatRequest, auth?: RequestAuth): Promise<ChatResponse> {
     const url = `${getBackendUrl()}${API_CHAT}`;
 
     const response = await fetch(url, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: jsonHeaders(auth),
         body: JSON.stringify(request),
     });
 
-    if (!response.ok) {
-        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
-    }
+    await ensureOk(response);
 
     return response.json() as Promise<ChatResponse>;
 }
@@ -28,38 +60,42 @@ export interface ChatStreamHandlers {
     onDone?(): void | Promise<void>;
 }
 
-export async function getChatStatus(): Promise<ChatStatus> {
+export async function getChatStatus(auth?: RequestAuth): Promise<ChatStatus> {
     const url = `${getBackendUrl()}${API_CHAT_STATUS}`;
 
-    const response = await fetch(url);
+    const response = await fetch(url, { headers: authHeaders(auth) });
 
-    if (!response.ok) {
-        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
-    }
+    await ensureOk(response);
 
     return response.json() as Promise<ChatStatus>;
+}
+
+export async function getChatHistory(auth?: RequestAuth): Promise<ChatHistoryItem[]> {
+    const url = `${getBackendUrl()}${API_CHAT_HISTORY}`;
+
+    const response = await fetch(url, { headers: authHeaders(auth) });
+
+    await ensureOk(response);
+
+    return response.json() as Promise<ChatHistoryItem[]>;
 }
 
 export async function sendChatMessageStream(
     request: ChatRequest,
     handlers: ChatStreamHandlers,
+    auth?: RequestAuth,
     signal?: AbortSignal,
 ): Promise<void> {
     const url = `${getBackendUrl()}${API_CHAT_STREAM}`;
 
     const response = await fetch(url, {
         method: 'POST',
-        headers: {
-            Accept: 'text/event-stream',
-            'Content-Type': 'application/json',
-        },
+        headers: { ...jsonHeaders(auth), Accept: 'text/event-stream' },
         body: JSON.stringify(request),
         signal,
     });
 
-    if (!response.ok) {
-        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
-    }
+    await ensureOk(response);
 
     if (!response.body) {
         throw new Error('Streaming response body is unavailable');
@@ -90,6 +126,52 @@ export async function sendChatMessageStream(
     if (buffer.length > 0) {
         handleServerSentEvent(buffer, handlers);
     }
+}
+
+export async function register(userId: string, password: string): Promise<AuthResponse> {
+    return postJson<AuthResponse>(API_AUTH_REGISTER, { userId, password });
+}
+
+export async function login(userId: string, password: string): Promise<AuthResponse> {
+    return postJson<AuthResponse>(API_AUTH_LOGIN, { userId, password });
+}
+
+export async function refresh(refreshToken: string): Promise<AuthResponse> {
+    return postJson<AuthResponse>(API_AUTH_REFRESH, { refreshToken });
+}
+
+export async function logout(refreshToken: string, auth?: RequestAuth): Promise<void> {
+    const response = await fetch(`${getBackendUrl()}${API_AUTH_LOGOUT}`, {
+        method: 'POST',
+        headers: jsonHeaders(auth),
+        body: JSON.stringify({ refreshToken }),
+    });
+    await ensureOk(response);
+}
+
+export async function me(auth?: RequestAuth): Promise<UserProfile> {
+    const response = await fetch(`${getBackendUrl()}${API_AUTH_ME}`, { headers: authHeaders(auth) });
+    await ensureOk(response);
+    return response.json() as Promise<UserProfile>;
+}
+
+export async function getModelConfig(auth?: RequestAuth): Promise<ModelConfig> {
+    const response = await fetch(`${getBackendUrl()}${API_MODEL_CONFIG}`, { headers: authHeaders(auth) });
+    await ensureOk(response);
+    return response.json() as Promise<ModelConfig>;
+}
+
+export async function saveModelConfig(
+    payload: { baseUrl: string; modelName: string; provider: 'OLLAMA' },
+    auth?: RequestAuth,
+): Promise<ModelConfig> {
+    const response = await fetch(`${getBackendUrl()}${API_MODEL_CONFIG}`, {
+        method: 'PUT',
+        headers: jsonHeaders(auth),
+        body: JSON.stringify(payload),
+    });
+    await ensureOk(response);
+    return response.json() as Promise<ModelConfig>;
 }
 
 function handleServerSentEvent(eventText: string, handlers: ChatStreamHandlers): void {
@@ -126,4 +208,38 @@ function parseStreamData(data: string): string {
 function readEventFieldValue(line: string, fieldName: string): string {
     const value = line.slice(`${fieldName}:`.length);
     return value.startsWith(' ') ? value.slice(1) : value;
+}
+
+async function postJson<T>(path: string, payload: unknown): Promise<T> {
+    const response = await fetch(`${getBackendUrl()}${path}`, {
+        method: 'POST',
+        headers: jsonHeaders(),
+        body: JSON.stringify(payload),
+    });
+    await ensureOk(response);
+    return response.json() as Promise<T>;
+}
+
+function authHeaders(auth?: RequestAuth): Record<string, string> {
+    return auth?.accessToken ? { Authorization: `Bearer ${auth.accessToken}` } : {};
+}
+
+function jsonHeaders(auth?: RequestAuth): Record<string, string> {
+    return { 'Content-Type': 'application/json', ...authHeaders(auth) };
+}
+
+async function ensureOk(response: Response): Promise<void> {
+    if (response.ok) {
+        return;
+    }
+
+    try {
+        const body = (await response.json()) as { code?: string; message?: string };
+        throw new ApiError(response.status, body.code ?? `HTTP_${response.status}`, body.message ?? response.statusText);
+    } catch (err) {
+        if (err instanceof ApiError) {
+            throw err;
+        }
+        throw new ApiError(response.status, `HTTP_${response.status}`, response.statusText);
+    }
 }

@@ -19,6 +19,7 @@ public class WebConfig implements WebMvcConfigurer {
         /* 모든 엔드포인트에 대해 CORS 허용 — Phase 0 개발 편의용 */
         registry.addMapping("/**")
                 .allowedOriginPatterns("*")
-                .allowedMethods("GET", "POST", "OPTIONS");
+                .allowedMethods("GET", "POST", "PUT", "OPTIONS")
+                .allowedHeaders("Authorization", "Content-Type", "Accept");
     }
 }

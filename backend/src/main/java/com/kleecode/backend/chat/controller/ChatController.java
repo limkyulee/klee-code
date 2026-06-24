@@ -4,6 +4,7 @@ import com.kleecode.backend.chat.dto.ChatRequest;
 import com.kleecode.backend.chat.dto.ChatResponse;
 import com.kleecode.backend.chat.dto.ChatStatus;
 import com.kleecode.backend.chat.service.ChatService;
+import com.kleecode.backend.security.AuthenticatedUser;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
@@ -12,6 +13,7 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 import reactor.core.Disposable;
 import tools.jackson.databind.json.JsonMapper;
@@ -38,8 +40,8 @@ public class ChatController {
     private final JsonMapper jsonMapper;
 
     @GetMapping("/status")
-    public ResponseEntity<ChatStatus> status() {
-        return ResponseEntity.ok(chatService.status());
+    public ResponseEntity<ChatStatus> status(@AuthenticationPrincipal AuthenticatedUser user) {
+        return ResponseEntity.ok(chatService.status(user.userId()));
     }
 
     /**
@@ -49,8 +51,11 @@ public class ChatController {
      * @return 200 OK + LLM 응답 텍스트
      */
     @PostMapping
-    public ResponseEntity<ChatResponse> chat(@RequestBody ChatRequest request) {
-        String answer = chatService.chat(request);
+    public ResponseEntity<ChatResponse> chat(
+            @AuthenticationPrincipal AuthenticatedUser user,
+            @RequestBody ChatRequest request
+    ) {
+        String answer = chatService.chat(user.userId(), request);
 
         /* ResponseEntity 로 감싸 HTTP 상태 코드를 명시적으로 제어한다.
            이후 에러 케이스(모델 타임아웃, 잘못된 요청 등)에서 상태 코드를 달리할 수 있다. */
@@ -64,7 +69,7 @@ public class ChatController {
      * @return progress/token/done SSE 이벤트 스트림
      */
     @PostMapping(path = "/stream", produces = MediaType.TEXT_EVENT_STREAM_VALUE)
-    public SseEmitter stream(@RequestBody ChatRequest request) {
+    public SseEmitter stream(@AuthenticationPrincipal AuthenticatedUser user, @RequestBody ChatRequest request) {
         SseEmitter emitter = new SseEmitter(0L);
         AtomicReference<Disposable> subscriptionRef = new AtomicReference<>();
 
@@ -74,7 +79,7 @@ public class ChatController {
 
         sendEvent(emitter, "progress", "Request received. Preparing prompt and conversation memory...");
 
-        subscriptionRef.set(chatService.stream(request)
+        subscriptionRef.set(chatService.stream(user.userId(), request)
                 .doOnSubscribe(ignored ->
                         sendEvent(emitter, "progress", "Model stream opened. Receiving tokens..."))
                 .subscribe(

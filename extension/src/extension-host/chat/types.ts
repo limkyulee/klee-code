@@ -41,9 +41,42 @@ export interface ChatResponse {
 
 /** GET /chat/status 응답 바디 */
 export interface ChatStatus {
+    /** Whether the signed-in user has model configuration */
+    configured: boolean;
+
     /** Spring AI provider 이름 */
-    provider: string;
+    provider?: string;
 
     /** provider 별 실제 모델 이름 */
-    model: string;
+    model?: string;
+}
+
+export interface UserProfile {
+    userId: string;
+    roles: string[];
+    status: string;
+}
+
+export interface AuthResponse {
+    accessToken: string;
+    refreshToken: string;
+    tokenType: string;
+    expiresInSeconds: number;
+    user: UserProfile;
+}
+
+export interface ModelConfig {
+    configured: boolean;
+    provider?: 'OLLAMA';
+    baseUrl?: string;
+    modelName?: string;
+}
+
+export interface ChatHistoryItem {
+    id: string;
+    conversationId: string;
+    title: string;
+    status: 'STARTED' | 'SUCCEEDED' | 'FAILED';
+    createdAt: string;
+    completedAt?: string;
 }

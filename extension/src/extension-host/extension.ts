@@ -21,7 +21,7 @@ import { AssistantViewProvider } from './webview/AssistantViewProvider';
  * 커맨드를 등록하고 구독 목록에 추가해 비활성화 시 정리되게 한다.
  */
 export function activate(context: vscode.ExtensionContext): void {
-    const assistantViewProvider = new AssistantViewProvider(context.extensionUri);
+    const assistantViewProvider = new AssistantViewProvider(context.extensionUri, context.secrets);
     const chatView = vscode.window.registerWebviewViewProvider(
         AssistantViewProvider.viewType,
         assistantViewProvider
