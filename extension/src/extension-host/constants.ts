@@ -18,6 +18,7 @@ export const API_CHAT = '/chat';
 /** POST /chat/stream SSE 엔드포인트 경로 */
 export const API_CHAT_STREAM = '/chat/stream';
 
+export const API_CONVERSATIONS = '/conversations';
 export const API_CHAT_HISTORY = '/audit/chat-history';
 export const API_AUTH_REGISTER = '/auth/register';
 export const API_AUTH_LOGIN = '/auth/login';

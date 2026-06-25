@@ -4,6 +4,7 @@ import com.kleecode.backend.audit.dto.AuditLog;
 import com.kleecode.backend.audit.service.AuditLogService;
 import com.kleecode.backend.chat.dto.ChatRequest;
 import com.kleecode.backend.chat.dto.ChatStatus;
+import com.kleecode.backend.conversation.service.ConversationService;
 import com.kleecode.backend.modelconfig.dto.ModelConfigResponse;
 import com.kleecode.backend.modelconfig.dto.UserModelConfig;
 import com.kleecode.backend.modelconfig.service.ModelConfigService;
@@ -40,6 +41,7 @@ public class ChatService {
     private static final String CONVERSATION_ID_KEY = "chat_memory_conversation_id";
 
     private final AuditLogService auditLogService;
+    private final ConversationService conversationService;
     private final ModelConfigService modelConfigService;
     private final UserOllamaChatClientFactory chatClientFactory;
 
@@ -61,6 +63,7 @@ public class ChatService {
     public String chat(String userId, ChatRequest request) {
         UserModelConfig modelConfig = modelConfigService.requireConfig(userId);
         Optional<AuditLog> auditLog = auditLogService.start(userId, request, modelConfig.provider().name().toLowerCase(), false);
+        auditLog.ifPresent(conversationService::recordTurnStarted);
 
         /* advisor param 으로 conversationId 를 넘기면 MessageChatMemoryAdvisor 가
            해당 ID 의 과거 대화 이력을 프롬프트 앞에 자동으로 주입한다. */
@@ -73,10 +76,10 @@ public class ChatService {
                     .call()
                     .content();
 
-            auditLogService.markSucceeded(auditLog, answer);
+            auditLogService.markSucceeded(auditLog, answer).ifPresent(conversationService::recordTurnCompleted);
             return answer;
         } catch (RuntimeException ex) {
-            auditLogService.markFailed(auditLog, ex.getMessage());
+            auditLogService.markFailed(auditLog, ex.getMessage()).ifPresent(conversationService::recordTurnCompleted);
             throw ex;
         }
     }
@@ -90,6 +93,7 @@ public class ChatService {
     public Flux<String> stream(String userId, ChatRequest request) {
         UserModelConfig modelConfig = modelConfigService.requireConfig(userId);
         Optional<AuditLog> auditLog = auditLogService.start(userId, request, modelConfig.provider().name().toLowerCase(), false);
+        auditLog.ifPresent(conversationService::recordTurnStarted);
         AtomicReference<StringBuilder> answer = new AtomicReference<>(new StringBuilder());
 
         log.info("Streaming chat request: conversationId={}, question={}", request.conversationId(), request.question());
@@ -106,10 +110,12 @@ public class ChatService {
                     answer.get().append(answerChunk);
                     log.info("Received answer chunk: {}", answerChunk);
                 })
-                .doOnError(ex -> auditLogService.markFailed(auditLog, ex.getMessage()))
+                .doOnError(ex -> auditLogService.markFailed(auditLog, ex.getMessage())
+                        .ifPresent(conversationService::recordTurnCompleted))
                 .doFinally(signalType -> {
                     if (signalType == SignalType.ON_COMPLETE) {
-                        auditLogService.markSucceeded(auditLog, answer.get().toString());
+                        auditLogService.markSucceeded(auditLog, answer.get().toString())
+                                .ifPresent(conversationService::recordTurnCompleted);
                     }
                 });
     }

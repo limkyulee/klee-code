@@ -10,9 +10,9 @@ import {
     API_AUTH_REFRESH,
     API_AUTH_REGISTER,
     API_CHAT,
-    API_CHAT_HISTORY,
     API_CHAT_STATUS,
     API_CHAT_STREAM,
+    API_CONVERSATIONS,
     API_MODEL_CONFIG,
 } from '../constants';
 import type {
@@ -21,6 +21,7 @@ import type {
     ChatRequest,
     ChatResponse,
     ChatStatus,
+    ConversationDetail,
     ModelConfig,
     UserProfile,
 } from '../chat/types';
@@ -71,13 +72,31 @@ export async function getChatStatus(auth?: RequestAuth): Promise<ChatStatus> {
 }
 
 export async function getChatHistory(auth?: RequestAuth): Promise<ChatHistoryItem[]> {
-    const url = `${getBackendUrl()}${API_CHAT_HISTORY}`;
+    const url = `${getBackendUrl()}${API_CONVERSATIONS}`;
 
     const response = await fetch(url, { headers: authHeaders(auth) });
 
     await ensureOk(response);
 
     return response.json() as Promise<ChatHistoryItem[]>;
+}
+
+export async function getConversation(conversationId: string, auth?: RequestAuth): Promise<ConversationDetail> {
+    const url = `${getBackendUrl()}${API_CONVERSATIONS}/${encodeURIComponent(conversationId)}`;
+
+    const response = await fetch(url, { headers: authHeaders(auth) });
+
+    await ensureOk(response);
+
+    return response.json() as Promise<ConversationDetail>;
+}
+
+export async function deleteConversation(conversationId: string, auth?: RequestAuth): Promise<void> {
+    const url = `${getBackendUrl()}${API_CONVERSATIONS}/${encodeURIComponent(conversationId)}`;
+
+    const response = await fetch(url, { method: 'DELETE', headers: authHeaders(auth) });
+
+    await ensureOk(response);
 }
 
 export async function sendChatMessageStream(

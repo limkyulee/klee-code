@@ -1,6 +1,6 @@
 import { useEffect, useReducer, useRef, useState, type FormEvent } from 'react';
 import { vscode } from './api/vscodeBridge';
-import type { ChatHistoryItem, ExtensionToWebviewMessage, ModelConfigState } from './api/webviewProtocol';
+import type { ChatHistoryItem, ConversationMessage, ExtensionToWebviewMessage, ModelConfigState } from './api/webviewProtocol';
 import { ChatInput } from './components/ChatInput';
 import { MessageList } from './components/MessageList';
 import { messageReducer } from './model/messageReducer';
@@ -21,6 +21,7 @@ export function ChatView() {
     const [authMode, setAuthMode] = useState<'login' | 'register'>('login');
     const [modelConfig, setModelConfig] = useState<ModelConfigState>({ configured: false });
     const [history, setHistory] = useState<ChatHistoryItem[]>([]);
+    const [activeConversationId, setActiveConversationId] = useState<string | undefined>();
     const [popover, setPopover] = useState<Popover>(null);
     const headerActionsRef = useRef<HTMLDivElement>(null);
 
@@ -71,6 +72,7 @@ export function ChatView() {
                     setAuth({ status: 'signedOut' });
                     setModelConfig({ configured: false });
                     setHistory([]);
+                    setActiveConversationId(undefined);
                     dispatch({ type: 'reset' });
                     setStatus('Signed out');
                     setPopover('settings');
@@ -80,6 +82,25 @@ export function ChatView() {
                     return;
                 case 'CHAT_HISTORY':
                     setHistory(message.payload.history);
+                    return;
+                case 'CONVERSATION_LOADED':
+                    setActiveConversationId(message.payload.conversationId);
+                    setPopover(null);
+                    setPending(false);
+                    setStatus('Conversation loaded');
+                    dispatch({
+                        type: 'replace',
+                        messages: message.payload.messages.map(toChatMessage),
+                    });
+                    return;
+                case 'CONVERSATION_DELETED':
+                    setHistory((items) => items.filter((item) => item.conversationId !== message.payload.conversationId));
+                    if (message.payload.activeReset) {
+                        setActiveConversationId(undefined);
+                        setPending(false);
+                        setStatus('Conversation deleted');
+                        dispatch({ type: 'reset' });
+                    }
                     return;
                 case 'STATUS':
                     setStatus(`Backend: ${message.payload.backendUrl}`);
@@ -91,6 +112,7 @@ export function ChatView() {
                     return;
                 case 'REQUEST_STARTED':
                     setPending(true);
+                    setActiveConversationId(message.payload.conversationId);
                     dispatch({
                         type: 'add',
                         id: message.payload.messageId,
@@ -140,6 +162,7 @@ export function ChatView() {
                     dispatch({ type: 'add', message: { role: 'error', text: message.payload.message } });
                     return;
                 case 'CONVERSATION_RESET':
+                    setActiveConversationId(undefined);
                     setPending(false);
                     setStatus('New conversation');
                     dispatch({ type: 'reset' });
@@ -175,6 +198,22 @@ export function ChatView() {
         setPopover((current) => (current === 'history' ? null : 'history'));
         if (auth.status === 'signedIn') {
             vscode.postMessage({ type: 'REQUEST_CHAT_HISTORY' });
+        }
+    }
+
+    function selectConversation(conversationId: string) {
+        if (pending) {
+            return;
+        }
+        vscode.postMessage({ type: 'SELECT_CONVERSATION', payload: { conversationId } });
+    }
+
+    function deleteConversation(conversationId: string) {
+        if (pending) {
+            return;
+        }
+        if (window.confirm('Delete this conversation permanently?')) {
+            vscode.postMessage({ type: 'DELETE_CONVERSATION', payload: { conversationId } });
         }
     }
 
@@ -218,7 +257,16 @@ export function ChatView() {
                         >
                             <span aria-hidden="true" className="header-icon icon-compose" />
                         </button>
-                        {popover === 'history' ? <HistoryPopover auth={auth} history={history} /> : null}
+                        {popover === 'history' ? (
+                            <HistoryPopover
+                                activeConversationId={activeConversationId}
+                                auth={auth}
+                                disabled={pending}
+                                history={history}
+                                onDelete={deleteConversation}
+                                onSelect={selectConversation}
+                            />
+                        ) : null}
                         {popover === 'settings' ? (
                             <SettingsPopover
                                 auth={auth}
@@ -246,7 +294,21 @@ export function ChatView() {
     );
 }
 
-function HistoryPopover({ auth, history }: { auth: AuthState; history: ChatHistoryItem[] }) {
+function HistoryPopover({
+    activeConversationId,
+    auth,
+    disabled,
+    history,
+    onDelete,
+    onSelect,
+}: {
+    activeConversationId?: string;
+    auth: AuthState;
+    disabled: boolean;
+    history: ChatHistoryItem[];
+    onDelete(conversationId: string): void;
+    onSelect(conversationId: string): void;
+}) {
     const [query, setQuery] = useState('');
     const filteredHistory = history.filter((item) => item.title.toLowerCase().includes(query.trim().toLowerCase()));
 
@@ -273,18 +335,46 @@ function HistoryPopover({ auth, history }: { auth: AuthState; history: ChatHisto
             ) : (
                 <div className="history-list">
                     {filteredHistory.map((item) => (
-                        <button className="history-item" key={item.conversationId} type="button">
-                            <span className="history-title">{item.title}</span>
-                            <span className="history-meta">
-                                {item.status === 'FAILED' ? <span className="history-failed">Failed</span> : null}
-                                <span>{formatRelativeTime(item.updatedAt)}</span>
-                            </span>
-                        </button>
+                        <div
+                            className={`history-row${activeConversationId === item.conversationId ? ' selected' : ''}`}
+                            key={item.conversationId}
+                        >
+                            <button
+                                className="history-item"
+                                disabled={disabled}
+                                onClick={() => onSelect(item.conversationId)}
+                                type="button"
+                            >
+                                <span className="history-title">{item.title}</span>
+                                <span className="history-meta">
+                                    {item.status === 'FAILED' ? <span className="history-failed">Failed</span> : null}
+                                    <span>{formatRelativeTime(item.updatedAt)}</span>
+                                </span>
+                            </button>
+                            <button
+                                aria-label={`Delete ${item.title}`}
+                                className="history-delete"
+                                disabled={disabled}
+                                onClick={() => onDelete(item.conversationId)}
+                                title="Delete conversation"
+                                type="button"
+                            >
+                                <span aria-hidden="true" className="history-delete-icon" />
+                            </button>
+                        </div>
                     ))}
                 </div>
             )}
         </section>
     );
+}
+
+function toChatMessage(message: ConversationMessage, index: number) {
+    return {
+        id: `${message.createdAt}-${index}`,
+        role: message.role,
+        text: message.text,
+    };
 }
 
 interface SettingsPopoverProps {

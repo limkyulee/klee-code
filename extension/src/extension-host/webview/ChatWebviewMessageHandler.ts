@@ -2,8 +2,10 @@ import * as vscode from 'vscode';
 import { randomUUID } from 'crypto';
 import {
     ApiError,
+    deleteConversation,
     getChatHistory,
     getChatStatus,
+    getConversation,
     getModelConfig,
     saveModelConfig,
     sendChatMessageStream,
@@ -19,12 +21,14 @@ export type WebviewMessage =
     | { type: 'LOGOUT' }
     | { type: 'SAVE_MODEL_CONFIG'; payload: { baseUrl: string; modelName: string } }
     | { type: 'REQUEST_CHAT_HISTORY' }
+    | { type: 'SELECT_CONVERSATION'; payload: { conversationId: string } }
+    | { type: 'DELETE_CONVERSATION'; payload: { conversationId: string } }
     | { type: 'SEND_MESSAGE'; payload: { text: string } }
     | { type: 'STOP_GENERATION' }
     | { type: 'NEW_CONVERSATION' };
 
 export class ChatWebviewMessageHandler {
-    private conversationId = randomUUID();
+    private conversationId: string = randomUUID();
     private activeAbortController: AbortController | undefined;
     private activeMessageId: string | undefined;
 
@@ -53,6 +57,12 @@ export class ChatWebviewMessageHandler {
             case 'REQUEST_CHAT_HISTORY':
                 await this.postChatHistory();
                 return;
+            case 'SELECT_CONVERSATION':
+                await this.selectConversation(message.payload.conversationId);
+                return;
+            case 'DELETE_CONVERSATION':
+                await this.deleteConversation(message.payload.conversationId);
+                return;
             case 'NEW_CONVERSATION':
                 await this.resetConversation();
                 return;
@@ -73,7 +83,7 @@ export class ChatWebviewMessageHandler {
     async resetConversation(): Promise<void> {
         this.abortActiveRequestWithoutNotification();
         this.conversationId = randomUUID();
-        await this.postMessage({ type: 'CONVERSATION_RESET' });
+        await this.postMessage({ type: 'CONVERSATION_RESET', payload: { conversationId: this.conversationId } });
     }
 
     private async ask(question: string): Promise<void> {
@@ -92,7 +102,10 @@ export class ChatWebviewMessageHandler {
         this.activeAbortController = abortController;
         this.activeMessageId = assistantMessageId;
 
-        await this.postMessage({ type: 'REQUEST_STARTED', payload: { messageId: assistantMessageId } });
+        await this.postMessage({
+            type: 'REQUEST_STARTED',
+            payload: { messageId: assistantMessageId, conversationId: this.conversationId },
+        });
 
         try {
             const editor = vscode.window.activeTextEditor;
@@ -253,6 +266,41 @@ export class ChatWebviewMessageHandler {
             await this.postMessage({ type: 'CHAT_HISTORY', payload: { history } });
         } catch {
             await this.postMessage({ type: 'CHAT_HISTORY', payload: { history: [] } });
+        }
+    }
+
+    private async selectConversation(conversationId: string): Promise<void> {
+        if (this.activeAbortController) {
+            return;
+        }
+
+        try {
+            const detail = await this.withAuthorizedRetry((accessToken) => getConversation(conversationId, { accessToken }));
+            this.conversationId = detail.conversationId;
+            await this.postMessage({ type: 'CONVERSATION_LOADED', payload: detail });
+        } catch (err) {
+            await this.postMessage({ type: 'ERROR', payload: { message: toErrorMessage(err) } });
+        }
+    }
+
+    private async deleteConversation(conversationId: string): Promise<void> {
+        if (this.activeAbortController) {
+            return;
+        }
+
+        try {
+            await this.withAuthorizedRetry((accessToken) => deleteConversation(conversationId, { accessToken }));
+            const activeReset = this.conversationId === conversationId;
+            if (activeReset) {
+                this.conversationId = randomUUID();
+            }
+            await this.postMessage({
+                type: 'CONVERSATION_DELETED',
+                payload: { conversationId, activeReset, nextConversationId: this.conversationId },
+            });
+            await this.postChatHistory();
+        } catch (err) {
+            await this.postMessage({ type: 'ERROR', payload: { message: toErrorMessage(err) } });
         }
     }
 

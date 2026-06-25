@@ -9,6 +9,8 @@ export type WebviewToExtensionMessage =
     | { type: 'LOGOUT' }
     | { type: 'SAVE_MODEL_CONFIG'; payload: { baseUrl: string; modelName: string } }
     | { type: 'REQUEST_CHAT_HISTORY' }
+    | { type: 'SELECT_CONVERSATION'; payload: { conversationId: string } }
+    | { type: 'DELETE_CONVERSATION'; payload: { conversationId: string } }
     | { type: 'SEND_MESSAGE'; payload: SendMessagePayload }
     | { type: 'STOP_GENERATION' }
     | { type: 'NEW_CONVERSATION' };
@@ -20,15 +22,20 @@ export type ExtensionToWebviewMessage =
     | { type: 'SIGNED_OUT' }
     | { type: 'MODEL_CONFIG'; payload: { modelConfig: ModelConfigState } }
     | { type: 'CHAT_HISTORY'; payload: { history: ChatHistoryItem[] } }
+    | { type: 'CONVERSATION_LOADED'; payload: ConversationDetail }
+    | {
+          type: 'CONVERSATION_DELETED';
+          payload: { conversationId: string; activeReset: boolean; nextConversationId: string };
+      }
     | { type: 'STATUS'; payload: { backendUrl: string; configured?: boolean; provider?: string; model?: string } }
-    | { type: 'REQUEST_STARTED'; payload: { messageId: string } }
+    | { type: 'REQUEST_STARTED'; payload: { messageId: string; conversationId: string } }
     | { type: 'REQUEST_STOPPED'; payload: { messageId: string } }
     | { type: 'USER_MESSAGE'; payload: { text: string } }
     | { type: 'PROGRESS_DELTA'; payload: { messageId: string; text: string } }
     | { type: 'ASSISTANT_DELTA'; payload: { messageId: string; text: string } }
     | { type: 'ASSISTANT_RESPONSE'; payload: { messageId: string } }
     | { type: 'ERROR'; payload: { message: string; messageId?: string } }
-    | { type: 'CONVERSATION_RESET' };
+    | { type: 'CONVERSATION_RESET'; payload: { conversationId: string } };
 
 export interface ModelConfigState {
     configured: boolean;
@@ -45,4 +52,16 @@ export interface ChatHistoryItem {
     createdAt: string;
     updatedAt: string;
     turnCount: number;
+}
+
+export interface ConversationMessage {
+    role: 'user' | 'assistant' | 'error';
+    text: string;
+    createdAt: string;
+    status: 'STARTED' | 'SUCCEEDED' | 'FAILED';
+}
+
+export interface ConversationDetail {
+    conversationId: string;
+    messages: ConversationMessage[];
 }

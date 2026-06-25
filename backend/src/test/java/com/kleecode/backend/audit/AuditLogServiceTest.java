@@ -11,9 +11,6 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 
-import java.time.Instant;
-import java.util.List;
-
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -91,98 +88,4 @@ class AuditLogServiceTest {
         assertEquals("boom", updated.get().errorMessage());
     }
 
-    @Test
-    void recentChatHistoryGroupsAuditLogsByConversation() {
-        Instant firstCreatedAt = Instant.parse("2026-06-24T01:00:00Z");
-        Instant secondCreatedAt = Instant.parse("2026-06-24T01:10:00Z");
-        Instant secondCompletedAt = Instant.parse("2026-06-24T01:11:00Z");
-        Instant failedCreatedAt = Instant.parse("2026-06-24T02:00:00Z");
-        Instant failedCompletedAt = Instant.parse("2026-06-24T02:01:00Z");
-
-        when(auditLogRepository.findByUserIdOrderByCreatedAtDesc("user-1")).thenReturn(List.of(
-                auditLog(
-                        "log-3",
-                        "user-1",
-                        "conversation-2",
-                        failedCreatedAt,
-                        AuditLogStatus.FAILED,
-                        failedCompletedAt,
-                        "Second conversation",
-                        null,
-                        "boom"),
-                auditLog(
-                        "log-2",
-                        "user-1",
-                        "conversation-1",
-                        secondCreatedAt,
-                        AuditLogStatus.SUCCEEDED,
-                        secondCompletedAt,
-                        "Follow up question",
-                        "follow up answer",
-                        null),
-                auditLog(
-                        "log-1",
-                        "user-1",
-                        "conversation-1",
-                        firstCreatedAt,
-                        AuditLogStatus.SUCCEEDED,
-                        Instant.parse("2026-06-24T01:01:00Z"),
-                        "First question",
-                        "first answer",
-                        null)
-        ));
-
-        var history = auditLogService.recentChatHistory("user-1");
-
-        assertEquals(2, history.size());
-
-        assertEquals("conversation-2", history.get(0).id());
-        assertEquals("conversation-2", history.get(0).conversationId());
-        assertEquals("Second conversation", history.get(0).title());
-        assertEquals(AuditLogStatus.FAILED, history.get(0).status());
-        assertEquals(failedCreatedAt, history.get(0).createdAt());
-        assertEquals(failedCompletedAt, history.get(0).updatedAt());
-        assertEquals(1, history.get(0).turnCount());
-
-        assertEquals("conversation-1", history.get(1).id());
-        assertEquals("First question", history.get(1).title());
-        assertEquals(AuditLogStatus.SUCCEEDED, history.get(1).status());
-        assertEquals(firstCreatedAt, history.get(1).createdAt());
-        assertEquals(secondCompletedAt, history.get(1).updatedAt());
-        assertEquals(2, history.get(1).turnCount());
-    }
-
-    private com.kleecode.backend.audit.dto.AuditLog auditLog(
-            String id,
-            String userId,
-            String conversationId,
-            Instant createdAt,
-            AuditLogStatus status,
-            Instant completedAt,
-            String question,
-            String answer,
-            String errorMessage
-    ) {
-        return new com.kleecode.backend.audit.dto.AuditLog(
-                id,
-                userId,
-                conversationId,
-                createdAt,
-                status,
-                completedAt,
-                "ollama",
-                false,
-                null,
-                null,
-                null,
-                null,
-                null,
-                null,
-                null,
-                null,
-                question,
-                answer,
-                errorMessage
-        );
-    }
 }

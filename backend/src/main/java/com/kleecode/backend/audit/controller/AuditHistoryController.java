@@ -1,7 +1,7 @@
 package com.kleecode.backend.audit.controller;
 
 import com.kleecode.backend.audit.dto.ChatHistoryItem;
-import com.kleecode.backend.audit.service.AuditLogService;
+import com.kleecode.backend.conversation.service.ConversationService;
 import com.kleecode.backend.security.AuthenticatedUser;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
@@ -17,10 +17,10 @@ import java.util.List;
 @RequiredArgsConstructor
 public class AuditHistoryController {
 
-    private final AuditLogService auditLogService;
+    private final ConversationService conversationService;
 
     @GetMapping("/chat-history")
     public ResponseEntity<List<ChatHistoryItem>> chatHistory(@AuthenticationPrincipal AuthenticatedUser user) {
-        return ResponseEntity.ok(auditLogService.recentChatHistory(user.userId()));
+        return ResponseEntity.ok(conversationService.recentConversations(user.userId()));
     }
 }

@@ -2,6 +2,7 @@ import type { ChatMessage } from '../types';
 
 export type MessageAction =
     | { type: 'add'; message: Omit<ChatMessage, 'id'>; id?: string }
+    | { type: 'replace'; messages: ChatMessage[] }
     | { type: 'appendText'; id: string; text: string }
     | { type: 'appendProgress'; id: string; text: string }
     | { type: 'finish'; id: string }
@@ -17,6 +18,8 @@ export function messageReducer(messages: ChatMessage[], action: MessageAction): 
                     id: action.id ?? `${Date.now()}-${messages.length}`,
                 },
             ];
+        case 'replace':
+            return action.messages;
         case 'appendText':
             return messages.map((message) =>
                 message.id === action.id ? { ...message, text: `${message.text}${action.text}` } : message,

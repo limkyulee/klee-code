@@ -1,5 +1,10 @@
 import * as assert from 'assert';
-import { sendChatMessageStream } from '../extension-host/services/chatApiClient';
+import {
+    deleteConversation,
+    getChatHistory,
+    getConversation,
+    sendChatMessageStream,
+} from '../extension-host/services/chatApiClient';
 
 suite('chat API client', () => {
     const originalFetch = globalThis.fetch;
@@ -39,5 +44,35 @@ suite('chat API client', () => {
         );
 
         assert.deepStrictEqual(chunks, [' Hello', ' world']);
+    });
+
+    test('uses conversations endpoints with authorization headers', async () => {
+        const requests: Array<{ input: Parameters<typeof fetch>[0]; init?: Parameters<typeof fetch>[1] }> = [];
+        globalThis.fetch = async (input, init) => {
+            requests.push({ input, init });
+
+            if (String(input).endsWith('/conversations/conversation-1') && init?.method === 'DELETE') {
+                return new Response(null, { status: 204, statusText: 'No Content' });
+            }
+
+            if (String(input).endsWith('/conversations/conversation-1')) {
+                return Response.json({ conversationId: 'conversation-1', messages: [] });
+            }
+
+            return Response.json([]);
+        };
+
+        await getChatHistory({ accessToken: 'access-token' });
+        await getConversation('conversation-1', { accessToken: 'access-token' });
+        await deleteConversation('conversation-1', { accessToken: 'access-token' });
+
+        assert.ok(String(requests[0].input).endsWith('/conversations'));
+        assert.ok(String(requests[1].input).endsWith('/conversations/conversation-1'));
+        assert.ok(String(requests[2].input).endsWith('/conversations/conversation-1'));
+        assert.strictEqual(requests[2].init?.method, 'DELETE');
+        for (const request of requests) {
+            const headers = request.init?.headers as Record<string, string> | undefined;
+            assert.strictEqual(headers?.Authorization, 'Bearer access-token');
+        }
     });
 });

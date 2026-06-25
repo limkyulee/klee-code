@@ -81,3 +81,15 @@ export interface ChatHistoryItem {
     updatedAt: string;
     turnCount: number;
 }
+
+export interface ConversationMessage {
+    role: 'user' | 'assistant' | 'error';
+    text: string;
+    createdAt: string;
+    status: 'STARTED' | 'SUCCEEDED' | 'FAILED';
+}
+
+export interface ConversationDetail {
+    conversationId: string;
+    messages: ConversationMessage[];
+}

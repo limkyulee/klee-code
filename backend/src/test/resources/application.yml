@@ -1,0 +1,12 @@
+spring:
+  data:
+    mongodb:
+      auto-index-creation: false
+  ai:
+    model:
+      chat: ollama
+klee-code:
+  security:
+    jwt-secret: dev-only-change-me-dev-only-change-me
+    access-token-ttl-minutes: 15
+    refresh-token-ttl-days: 14
