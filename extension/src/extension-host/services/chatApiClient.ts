@@ -213,6 +213,8 @@ function handleServerSentEvent(eventText: string, handlers: ChatStreamHandlers):
         void handlers.onAnswerDelta?.(parseStreamData(data));
     } else if (eventName === 'done') {
         void handlers.onDone?.();
+    } else if (eventName === 'error') {
+        throw new Error(parseStreamData(data));
     }
 }
 

@@ -46,6 +46,33 @@ suite('chat API client', () => {
         assert.deepStrictEqual(chunks, [' Hello', ' world']);
     });
 
+    test('throws streamed error event message', async () => {
+        globalThis.fetch = async () =>
+            new Response(
+                new ReadableStream({
+                    start(controller) {
+                        const encoder = new TextEncoder();
+                        controller.enqueue(encoder.encode('event: error\ndata: "Model server is unreachable"\n\n'));
+                        controller.close();
+                    },
+                }),
+                { status: 200, statusText: 'OK' },
+            );
+
+        await assert.rejects(
+            () =>
+                sendChatMessageStream(
+                    {
+                        conversationId: 'conversation-1',
+                        code: '',
+                        question: 'Greet me',
+                    },
+                    {},
+                ),
+            /Model server is unreachable/,
+        );
+    });
+
     test('uses conversations endpoints with authorization headers', async () => {
         const requests: Array<{ input: Parameters<typeof fetch>[0]; init?: Parameters<typeof fetch>[1] }> = [];
         globalThis.fetch = async (input, init) => {

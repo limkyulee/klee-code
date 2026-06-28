@@ -44,6 +44,7 @@ public class ChatService {
     private final ConversationService conversationService;
     private final ModelConfigService modelConfigService;
     private final UserOllamaChatClientFactory chatClientFactory;
+    private final ChatModelExceptionMapper exceptionMapper;
 
     public ChatStatus status(String userId) {
         ModelConfigResponse config = modelConfigService.findResponse(userId);
@@ -79,8 +80,9 @@ public class ChatService {
             auditLogService.markSucceeded(auditLog, answer).ifPresent(conversationService::recordTurnCompleted);
             return answer;
         } catch (RuntimeException ex) {
-            auditLogService.markFailed(auditLog, ex.getMessage()).ifPresent(conversationService::recordTurnCompleted);
-            throw ex;
+            RuntimeException mappedException = exceptionMapper.map(ex, modelConfig);
+            auditLogService.markFailed(auditLog, mappedException.getMessage()).ifPresent(conversationService::recordTurnCompleted);
+            throw mappedException;
         }
     }
 
@@ -110,6 +112,7 @@ public class ChatService {
                     answer.get().append(answerChunk);
                     log.info("Received answer chunk: {}", answerChunk);
                 })
+                .onErrorMap(ex -> exceptionMapper.map(ex, modelConfig))
                 .doOnError(ex -> auditLogService.markFailed(auditLog, ex.getMessage())
                         .ifPresent(conversationService::recordTurnCompleted))
                 .doFinally(signalType -> {

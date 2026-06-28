@@ -4,6 +4,7 @@ import com.kleecode.backend.chat.dto.ChatRequest;
 import com.kleecode.backend.chat.dto.ChatResponse;
 import com.kleecode.backend.chat.dto.ChatStatus;
 import com.kleecode.backend.chat.service.ChatService;
+import com.kleecode.backend.common.ApiException;
 import com.kleecode.backend.security.AuthenticatedUser;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.MediaType;
@@ -84,7 +85,10 @@ public class ChatController {
                         sendEvent(emitter, "progress", "Model stream opened. Receiving tokens..."))
                 .subscribe(
                         token -> sendEvent(emitter, "token", token),
-                        emitter::completeWithError,
+                        ex -> {
+                            sendEvent(emitter, "error", streamErrorMessage(ex));
+                            emitter.complete();
+                        },
                         () -> {
                             sendEvent(emitter, "progress", "Response complete.");
                             sendEvent(emitter, "done", "");
@@ -111,5 +115,12 @@ public class ChatController {
         } catch (IOException ex) {
             emitter.completeWithError(ex);
         }
+    }
+
+    private String streamErrorMessage(Throwable ex) {
+        if (ex instanceof ApiException) {
+            return ex.getMessage();
+        }
+        return "Chat stream failed";
     }
 }
