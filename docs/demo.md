@@ -1,6 +1,6 @@
 # Phase 4 Demo Guide
 
-Phase 4의 증거물은 로컬 장비 안에서 백엔드, MongoDB, Ollama가 함께 기동되고 VS Code 확장이 같은 백엔드에 질의하는 화면이다.
+Phase 4의 증거물은 내부 Docker Network 안에서 백엔드, MongoDB, 중앙 Ollama가 함께 기동되고 VS Code 확장이 같은 백엔드에 질의하는 화면이다.
 
 ## 1. 온프렘 스택 기동
 
@@ -13,10 +13,10 @@ docker compose up -d --build
 
 ```bash
 docker compose ps
-curl http://localhost:8080/chat/status
+curl http://localhost:8080/models
 ```
 
-정상 응답 예시는 provider가 `ollama`, model이 `qwen2.5-coder:3b`로 표시되는 형태다.
+정상 응답 예시는 `qwen2.5-coder:14b`가 기본 모델로 표시되는 형태다.
 
 ## 2. 확장 실행
 

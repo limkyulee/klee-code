@@ -25,7 +25,8 @@ export const API_AUTH_LOGIN = '/auth/login';
 export const API_AUTH_REFRESH = '/auth/refresh';
 export const API_AUTH_LOGOUT = '/auth/logout';
 export const API_AUTH_ME = '/auth/me';
-export const API_MODEL_CONFIG = '/me/model-config';
+export const API_MODELS = '/models';
+export const API_PREFERENCES = '/me/preferences';
 export const SECRET_REFRESH_TOKEN_KEY = 'klee-code.refreshToken';
 
 /** GET /chat/status 엔드포인트 경로 */

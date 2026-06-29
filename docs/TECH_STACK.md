@@ -34,6 +34,6 @@
 
 - `users`: login identity, roles, password hash
 - `sessions`: refresh session state and TTL
-- `user_model_configs`: per-user Ollama base URL and model
+- `user_preferences`: selected model, temperature, response language
 - `audit_logs`: request/response audit trail
 - `ai_chat_memory`: Spring AI conversation memory

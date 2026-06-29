@@ -3,6 +3,9 @@ import {
     deleteConversation,
     getChatHistory,
     getConversation,
+    getModels,
+    getPreferences,
+    savePreferences,
     sendChatMessageStream,
 } from '../extension-host/services/chatApiClient';
 
@@ -97,6 +100,35 @@ suite('chat API client', () => {
         assert.ok(String(requests[1].input).endsWith('/conversations/conversation-1'));
         assert.ok(String(requests[2].input).endsWith('/conversations/conversation-1'));
         assert.strictEqual(requests[2].init?.method, 'DELETE');
+        for (const request of requests) {
+            const headers = request.init?.headers as Record<string, string> | undefined;
+            assert.strictEqual(headers?.Authorization, 'Bearer access-token');
+        }
+    });
+
+    test('uses model and preference endpoints with authorization headers', async () => {
+        const requests: Array<{ input: Parameters<typeof fetch>[0]; init?: Parameters<typeof fetch>[1] }> = [];
+        globalThis.fetch = async (input, init) => {
+            requests.push({ input, init });
+
+            if (String(input).endsWith('/models')) {
+                return Response.json([{ name: 'qwen2.5-coder:14b', displayName: 'Qwen 2.5 Coder', default: true }]);
+            }
+
+            return Response.json({ selectedModel: 'qwen2.5-coder:14b', temperature: 0.2, responseLanguage: 'Korean' });
+        };
+
+        await getModels({ accessToken: 'access-token' });
+        await getPreferences({ accessToken: 'access-token' });
+        await savePreferences(
+            { selectedModel: 'qwen2.5-coder:14b', temperature: 0.4, responseLanguage: 'English' },
+            { accessToken: 'access-token' },
+        );
+
+        assert.ok(String(requests[0].input).endsWith('/models'));
+        assert.ok(String(requests[1].input).endsWith('/me/preferences'));
+        assert.ok(String(requests[2].input).endsWith('/me/preferences'));
+        assert.strictEqual(requests[2].init?.method, 'PUT');
         for (const request of requests) {
             const headers = request.init?.headers as Record<string, string> | undefined;
             assert.strictEqual(headers?.Authorization, 'Bearer access-token');

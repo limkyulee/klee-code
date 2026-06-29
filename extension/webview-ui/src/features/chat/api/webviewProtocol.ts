@@ -7,7 +7,7 @@ export type WebviewToExtensionMessage =
     | { type: 'LOGIN'; payload: { userId: string; password: string } }
     | { type: 'REGISTER'; payload: { userId: string; password: string } }
     | { type: 'LOGOUT' }
-    | { type: 'SAVE_MODEL_CONFIG'; payload: { baseUrl: string; modelName: string } }
+    | { type: 'SAVE_PREFERENCES'; payload: UserPreferencesState }
     | { type: 'REQUEST_CHAT_HISTORY' }
     | { type: 'SELECT_CONVERSATION'; payload: { conversationId: string } }
     | { type: 'DELETE_CONVERSATION'; payload: { conversationId: string } }
@@ -20,7 +20,8 @@ export type ExtensionToWebviewMessage =
     | { type: 'AUTHENTICATED'; payload: { user: { userId: string; roles: string[]; status: string } } }
     | { type: 'AUTH_ERROR'; payload: { message: string } }
     | { type: 'SIGNED_OUT' }
-    | { type: 'MODEL_CONFIG'; payload: { modelConfig: ModelConfigState } }
+    | { type: 'MODELS'; payload: { models: AvailableModel[] } }
+    | { type: 'PREFERENCES'; payload: { preferences: UserPreferencesState } }
     | { type: 'CHAT_HISTORY'; payload: { history: ChatHistoryItem[] } }
     | { type: 'CONVERSATION_LOADED'; payload: ConversationDetail }
     | {
@@ -37,11 +38,16 @@ export type ExtensionToWebviewMessage =
     | { type: 'ERROR'; payload: { message: string; conversationId?: string; messageId?: string } }
     | { type: 'CONVERSATION_RESET'; payload: { conversationId: string; pending?: boolean } };
 
-export interface ModelConfigState {
-    configured: boolean;
-    provider?: 'OLLAMA';
-    baseUrl?: string;
-    modelName?: string;
+export interface AvailableModel {
+    name: string;
+    displayName: string;
+    default: boolean;
+}
+
+export interface UserPreferencesState {
+    selectedModel: string;
+    temperature: number;
+    responseLanguage: string;
 }
 
 export interface ChatHistoryItem {

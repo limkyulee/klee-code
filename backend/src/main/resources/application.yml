@@ -1,21 +1,16 @@
 spring:
   application:
     name: backend
-  data:
-    mongodb:
-      uri: ${MONGODB_URI:mongodb://localhost:27017/kleecode}
-      auto-index-creation: true
-  ai:
-    model:
-      chat: ${KLEE_CODE_AI_PROVIDER:anthropic}
-    anthropic:
-      api-key: ${ANTHROPIC_API_KEY:}
-      chat:
-        model: ${ANTHROPIC_MODEL:claude-haiku-4-5-20251001}
-    ollama:
-      base-url: ${OLLAMA_BASE_URL:http://localhost:11434}
-      chat:
-        model: ${OLLAMA_MODEL:qwen2.5-coder:3b}
+  mongodb:
+    uri: ${MONGODB_URI:mongodb://localhost:27017/kleecode}
+    auto-index-creation: true
+klee:
+  llm:
+    provider: ollama
+    base-url: ${KLEE_LLM_BASE_URL:http://ollama:11434}
+    default-model: ${KLEE_LLM_DEFAULT_MODEL:qwen2.5-coder:14b}
+    default-temperature: ${KLEE_LLM_DEFAULT_TEMPERATURE:0.2}
+    default-response-language: ${KLEE_LLM_DEFAULT_RESPONSE_LANGUAGE:Korean}
 klee-code:
   security:
     jwt-secret: ${KLEE_CODE_JWT_SECRET:dev-only-change-me-dev-only-change-me}

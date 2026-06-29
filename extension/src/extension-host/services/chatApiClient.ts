@@ -13,16 +13,18 @@ import {
     API_CHAT_STATUS,
     API_CHAT_STREAM,
     API_CONVERSATIONS,
-    API_MODEL_CONFIG,
+    API_MODELS,
+    API_PREFERENCES,
 } from '../constants';
 import type {
+    AvailableModel,
     AuthResponse,
     ChatHistoryItem,
     ChatRequest,
     ChatResponse,
     ChatStatus,
     ConversationDetail,
-    ModelConfig,
+    UserPreferences,
     UserProfile,
 } from '../chat/types';
 
@@ -174,23 +176,29 @@ export async function me(auth?: RequestAuth): Promise<UserProfile> {
     return response.json() as Promise<UserProfile>;
 }
 
-export async function getModelConfig(auth?: RequestAuth): Promise<ModelConfig> {
-    const response = await fetch(`${getBackendUrl()}${API_MODEL_CONFIG}`, { headers: authHeaders(auth) });
+export async function getModels(auth?: RequestAuth): Promise<AvailableModel[]> {
+    const response = await fetch(`${getBackendUrl()}${API_MODELS}`, { headers: authHeaders(auth) });
     await ensureOk(response);
-    return response.json() as Promise<ModelConfig>;
+    return response.json() as Promise<AvailableModel[]>;
 }
 
-export async function saveModelConfig(
-    payload: { baseUrl: string; modelName: string; provider: 'OLLAMA' },
+export async function getPreferences(auth?: RequestAuth): Promise<UserPreferences> {
+    const response = await fetch(`${getBackendUrl()}${API_PREFERENCES}`, { headers: authHeaders(auth) });
+    await ensureOk(response);
+    return response.json() as Promise<UserPreferences>;
+}
+
+export async function savePreferences(
+    payload: { selectedModel: string; temperature: number; responseLanguage: string },
     auth?: RequestAuth,
-): Promise<ModelConfig> {
-    const response = await fetch(`${getBackendUrl()}${API_MODEL_CONFIG}`, {
+): Promise<UserPreferences> {
+    const response = await fetch(`${getBackendUrl()}${API_PREFERENCES}`, {
         method: 'PUT',
         headers: jsonHeaders(auth),
         body: JSON.stringify(payload),
     });
     await ensureOk(response);
-    return response.json() as Promise<ModelConfig>;
+    return response.json() as Promise<UserPreferences>;
 }
 
 function handleServerSentEvent(eventText: string, handlers: ChatStreamHandlers): void {

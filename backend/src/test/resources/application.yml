@@ -2,9 +2,13 @@ spring:
   data:
     mongodb:
       auto-index-creation: false
-  ai:
-    model:
-      chat: ollama
+klee:
+  llm:
+    provider: ollama
+    base-url: http://localhost:11434
+    default-model: qwen2.5-coder:14b
+    default-temperature: 0.2
+    default-response-language: Korean
 klee-code:
   security:
     jwt-secret: dev-only-change-me-dev-only-change-me

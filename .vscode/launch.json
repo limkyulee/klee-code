@@ -1,0 +1,18 @@
+{
+	"version": "0.2.0",
+	"configurations": [
+		{
+			"name": "Run Klee Code Extension",
+			"type": "extensionHost",
+			"request": "launch",
+			"preLaunchTask": "extension: compile",
+			"args": [
+				"--extensionDevelopmentPath=${workspaceFolder}/extension",
+				"--disable-extensions"
+			],
+			"outFiles": [
+				"${workspaceFolder}/extension/dist/**/*.js"
+			]
+		}
+	]
+}

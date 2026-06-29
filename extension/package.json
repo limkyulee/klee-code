@@ -5,15 +5,10 @@
   "version": "0.0.1",
   "engines": {
     "node": ">=22.12.0",
-    "vscode": "^1.125.0"
+    "vscode": "^1.118.0"
   },
   "categories": [
     "Other"
-  ],
-  "activationEvents": [
-    "onView:klee-code.chatView",
-    "onCommand:klee-code.askAssistant",
-    "onCommand:klee-code.newConversation"
   ],
   "main": "./dist/extension.js",
   "contributes": {

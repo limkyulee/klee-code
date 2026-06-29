@@ -1,7 +1,6 @@
 package com.kleecode.backend.chat.service;
 
 import com.kleecode.backend.common.ApiException;
-import com.kleecode.backend.modelconfig.dto.UserModelConfig;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Component;
 import org.springframework.web.reactive.function.client.WebClientRequestException;
@@ -11,7 +10,7 @@ import java.net.ConnectException;
 @Component
 public class ChatModelExceptionMapper {
 
-    public RuntimeException map(Throwable ex, UserModelConfig config) {
+    public RuntimeException map(Throwable ex) {
         if (ex instanceof ApiException apiException) {
             return apiException;
         }
@@ -20,8 +19,7 @@ public class ChatModelExceptionMapper {
             return new ApiException(
                     HttpStatus.SERVICE_UNAVAILABLE,
                     "MODEL_SERVER_UNAVAILABLE",
-                    "Model server is unreachable at " + config.baseUrl()
-                            + ". Start Ollama or update the model server URL."
+                    "Central model server is unavailable. Contact the administrator."
             );
         }
 

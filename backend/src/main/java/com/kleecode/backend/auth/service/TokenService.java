@@ -54,7 +54,6 @@ public class TokenService {
         return accessTokenTtl.toSeconds();
     }
 
-    @SuppressWarnings("unchecked")
     public List<String> roles(Jwt jwt) {
         Object roles = jwt.getClaims().get("roles");
         if (roles instanceof List<?> roleList) {

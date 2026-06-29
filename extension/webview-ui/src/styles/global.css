@@ -22,6 +22,7 @@ body {
 
 button,
 input,
+select,
 textarea {
     font: inherit;
 }
@@ -552,7 +553,8 @@ textarea {
     font-size: 12px;
 }
 
-.field input {
+.field input,
+.field select {
     width: 100%;
     min-width: 0;
     height: 30px;
@@ -563,9 +565,21 @@ textarea {
     border-radius: 4px;
 }
 
-.field input:focus {
+.field input:focus,
+.field select:focus {
     outline: 1px solid var(--vscode-focusBorder);
     outline-offset: -1px;
+}
+
+.range-field {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 64px;
+    gap: 8px;
+    align-items: center;
+}
+
+.range-field input[type='range'] {
+    padding: 0;
 }
 
 .form-error {

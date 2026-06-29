@@ -30,7 +30,7 @@ services:
         condition: service_healthy
     environment:
       OLLAMA_HOST: http://ollama:11434
-    command: ["pull", "${OLLAMA_MODEL:-qwen2.5-coder:3b}"]
+    command: ["pull", "${KLEE_LLM_MODEL_TO_PULL:-qwen2.5-coder:14b}"]
     restart: "no"
 
   backend:
@@ -45,11 +45,10 @@ services:
         condition: service_completed_successfully
     environment:
       MONGODB_URI: mongodb://mongodb:27017/kleecode
-      KLEE_CODE_AI_PROVIDER: ${KLEE_CODE_AI_PROVIDER:-ollama}
-      OLLAMA_BASE_URL: http://ollama:11434
-      OLLAMA_MODEL: ${OLLAMA_MODEL:-qwen2.5-coder:3b}
-      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
-      ANTHROPIC_MODEL: ${ANTHROPIC_MODEL:-claude-haiku-4-5-20251001}
+      KLEE_LLM_BASE_URL: http://ollama:11434
+      KLEE_LLM_DEFAULT_MODEL: ${KLEE_LLM_DEFAULT_MODEL:-qwen2.5-coder:14b}
+      KLEE_LLM_DEFAULT_TEMPERATURE: ${KLEE_LLM_DEFAULT_TEMPERATURE:-0.2}
+      KLEE_LLM_DEFAULT_RESPONSE_LANGUAGE: ${KLEE_LLM_DEFAULT_RESPONSE_LANGUAGE:-Korean}
 
 volumes:
   mongodb_data:

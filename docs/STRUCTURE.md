@@ -62,8 +62,23 @@ src/main/java/com/kleecode/backend/
 │   │   └── package-info.java
 │   └── service/
 │       └── ChatService.java
+├── llm/
+│   ├── config/
+│   │   └── LlmProperties.java
+│   ├── controller/
+│   │   └── ModelController.java
+│   ├── dto/
+│   └── service/
+│       └── LLMGateway.java
+├── preference/
+│   ├── controller/
+│   │   └── UserPreferenceController.java
+│   ├── dto/
+│   ├── repository/
+│   │   └── UserPreferenceRepository.java
+│   └── service/
+│       └── UserPreferenceService.java
 └── config/
-    ├── ChatConfig.java
     └── WebConfig.java
 ```
 
@@ -76,12 +91,29 @@ src/main/java/com/kleecode/backend/
 채팅 API와 LLM 호출 흐름을 담당하는 도메인 패키지입니다.
 
 - `chat/controller/ChatController.java`: `/chat`, `/chat/stream` 엔드포인트를 제공합니다. 일반 JSON 응답과 SSE 스트리밍 응답을 모두 지원합니다.
-- `chat/service/ChatService.java`: Spring AI `ChatClient`를 통해 모델에 질문을 전달합니다. 선택 코드, 파일 정보, 주변 코드 조각을 프롬프트로 구성하고 대화 메모리와 감사 로그 처리를 연결합니다.
+- `chat/service/ChatService.java`: 중앙 `LLMGateway`의 Spring AI `ChatClient`를 통해 모델에 질문을 전달합니다. 선택 코드, 파일 정보, 주변 코드 조각을 프롬프트로 구성하고 대화 메모리와 감사 로그 처리를 연결합니다.
 - `chat/dto/ChatRequest.java`: 확장에서 백엔드로 전달하는 요청 DTO입니다. `conversationId`, 선택 코드, 질문, 코드 컨텍스트를 포함합니다.
 - `chat/dto/ChatResponse.java`: 일반 `/chat` 응답 DTO입니다. 모델 응답 텍스트를 담습니다.
 - `chat/dto/CodeContext.java`: 파일 경로, 언어 ID, 선택 범위, 선택 텍스트, 주변 코드 조각을 담는 코드 메타데이터입니다.
 - `chat/dto/SelectionRange.java`: 에디터 선택 영역의 시작/끝 라인과 문자 위치를 표현합니다.
 - `chat/repository/package-info.java`: 향후 채팅 저장소 패키지를 위한 패키지 문서 자리입니다.
+
+### `llm/`
+
+중앙 LLM Gateway와 승인 모델 목록을 담당하는 도메인 패키지입니다.
+
+- `llm/config/LlmProperties.java`: `klee.llm` 설정을 바인딩합니다. Ollama base URL, 기본 모델, 허용 모델 목록은 운영자 설정으로만 관리합니다.
+- `llm/controller/ModelController.java`: `GET /models` 엔드포인트로 허용 모델 목록을 제공합니다.
+- `llm/service/LLMGateway.java`: 중앙 Ollama `ChatClient`를 생성하고, 기본 모델과 allow-list 검증을 제공합니다.
+
+### `preference/`
+
+사용자 경험 설정을 저장하는 도메인 패키지입니다.
+
+- `preference/controller/UserPreferenceController.java`: `GET /me/preferences`, `PUT /me/preferences` 엔드포인트를 제공합니다.
+- `preference/dto/UserPreference.java`: `user_preferences` 컬렉션에 저장되는 MongoDB 문서입니다.
+- `preference/repository/UserPreferenceRepository.java`: 사용자별 preference repository입니다.
+- `preference/service/UserPreferenceService.java`: 선택 모델 allow-list 검증, temperature, 응답 언어 저장과 기본값 해석을 담당합니다.
 
 ### `audit/`
 
@@ -97,7 +129,6 @@ src/main/java/com/kleecode/backend/
 
 Spring Bean과 Web MVC 설정을 모아둔 패키지입니다.
 
-- `config/ChatConfig.java`: Spring AI `ChatClient` Bean을 구성합니다. `MessageChatMemoryAdvisor`를 기본 advisor로 등록해 MongoDB 기반 대화 메모리를 사용합니다.
 - `config/WebConfig.java`: 전역 CORS 설정을 제공합니다. 개발 편의를 위해 모든 origin 패턴과 `GET`, `POST`, `OPTIONS` 메서드를 허용합니다.
 
 ## 리소스
@@ -107,7 +138,7 @@ src/main/resources/
 └── application.yml
 ```
 
-- `application.yml`: 애플리케이션 이름, MongoDB URI, AI provider, Anthropic/Ollama 모델 설정을 환경 변수 기반으로 정의합니다.
+- `application.yml`: 애플리케이션 이름, MongoDB URI, 중앙 Ollama Gateway 설정, 허용 모델 목록을 환경 변수 기반으로 정의합니다.
 
 ## 테스트
 
@@ -133,7 +164,7 @@ src/test/java/com/kleecode/backend/
 1. VS Code 확장이 `/chat/stream`으로 질문, 대화 ID, 코드 컨텍스트를 전송합니다.
 2. `ChatController`가 요청을 받고 `ChatService`에 위임합니다.
 3. `ChatService`가 선택 코드와 주변 컨텍스트를 사용자 메시지로 구성합니다.
-4. `ChatClient`가 Spring AI 설정에 따라 Anthropic 또는 Ollama 모델을 호출합니다.
+4. `ChatService`가 사용자 preference와 중앙 `LLMGateway` 설정을 결합해 승인된 Ollama 모델을 호출합니다.
 5. `MessageChatMemoryAdvisor`가 `conversationId`를 기준으로 MongoDB 대화 메모리를 읽고 갱신합니다.
 6. `AuditLogService`가 요청 시작, 성공, 실패 상태를 MongoDB 감사 로그로 저장합니다.
 7. 스트리밍 응답은 `progress`, `token`, `done` SSE 이벤트로 확장에 전달됩니다.

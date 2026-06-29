@@ -6,8 +6,9 @@ import {
     getChatHistory,
     getChatStatus,
     getConversation,
-    getModelConfig,
-    saveModelConfig,
+    getModels,
+    getPreferences,
+    savePreferences,
     sendChatMessageStream,
 } from '../services/chatApiClient';
 import { getBackendUrl } from '../config/settings';
@@ -19,7 +20,7 @@ export type WebviewMessage =
     | { type: 'LOGIN'; payload: { userId: string; password: string } }
     | { type: 'REGISTER'; payload: { userId: string; password: string } }
     | { type: 'LOGOUT' }
-    | { type: 'SAVE_MODEL_CONFIG'; payload: { baseUrl: string; modelName: string } }
+    | { type: 'SAVE_PREFERENCES'; payload: { selectedModel: string; temperature: number; responseLanguage: string } }
     | { type: 'REQUEST_CHAT_HISTORY' }
     | { type: 'SELECT_CONVERSATION'; payload: { conversationId: string } }
     | { type: 'DELETE_CONVERSATION'; payload: { conversationId: string } }
@@ -69,8 +70,8 @@ export class ChatWebviewMessageHandler {
             case 'LOGOUT':
                 await this.logout();
                 return;
-            case 'SAVE_MODEL_CONFIG':
-                await this.saveModelConfig(message.payload.baseUrl, message.payload.modelName);
+            case 'SAVE_PREFERENCES':
+                await this.savePreferences(message.payload);
                 return;
             case 'REQUEST_CHAT_HISTORY':
                 await this.postChatHistory();
@@ -326,7 +327,8 @@ export class ChatWebviewMessageHandler {
         }
 
         await this.postMessage({ type: 'AUTHENTICATED', payload: { user } });
-        await this.postModelConfig();
+        await this.postModels();
+        await this.postPreferences();
         await this.postBackendStatus();
         await this.postChatHistory();
     }
@@ -335,7 +337,8 @@ export class ChatWebviewMessageHandler {
         try {
             const user = await this.authSession.login(userId, password);
             await this.postMessage({ type: 'AUTHENTICATED', payload: { user } });
-            await this.postModelConfig();
+            await this.postModels();
+            await this.postPreferences();
             await this.postBackendStatus();
             await this.postChatHistory();
         } catch (err) {
@@ -347,7 +350,8 @@ export class ChatWebviewMessageHandler {
         try {
             const user = await this.authSession.register(userId, password);
             await this.postMessage({ type: 'AUTHENTICATED', payload: { user } });
-            await this.postModelConfig();
+            await this.postModels();
+            await this.postPreferences();
             await this.postBackendStatus();
             await this.postChatHistory();
         } catch (err) {
@@ -361,24 +365,36 @@ export class ChatWebviewMessageHandler {
         await this.postMessage({ type: 'SIGNED_OUT' });
     }
 
-    private async saveModelConfig(baseUrl: string, modelName: string): Promise<void> {
+    private async savePreferences(payload: { selectedModel: string; temperature: number; responseLanguage: string }): Promise<void> {
         try {
-            const modelConfig = await this.withAuthorizedRetry((accessToken) =>
-                saveModelConfig({ provider: 'OLLAMA', baseUrl, modelName }, { accessToken }),
+            const preferences = await this.withAuthorizedRetry((accessToken) =>
+                savePreferences(payload, { accessToken }),
             );
-            await this.postMessage({ type: 'MODEL_CONFIG', payload: { modelConfig } });
+            await this.postMessage({ type: 'PREFERENCES', payload: { preferences } });
             await this.postBackendStatus();
         } catch (err) {
             await this.postMessage({ type: 'ERROR', payload: { message: toErrorMessage(err) } });
         }
     }
 
-    private async postModelConfig(): Promise<void> {
+    private async postModels(): Promise<void> {
         try {
-            const modelConfig = await this.withAuthorizedRetry((accessToken) => getModelConfig({ accessToken }));
-            await this.postMessage({ type: 'MODEL_CONFIG', payload: { modelConfig } });
+            const models = await this.withAuthorizedRetry((accessToken) => getModels({ accessToken }));
+            await this.postMessage({ type: 'MODELS', payload: { models } });
         } catch {
-            await this.postMessage({ type: 'MODEL_CONFIG', payload: { modelConfig: { configured: false } } });
+            await this.postMessage({ type: 'MODELS', payload: { models: [] } });
+        }
+    }
+
+    private async postPreferences(): Promise<void> {
+        try {
+            const preferences = await this.withAuthorizedRetry((accessToken) => getPreferences({ accessToken }));
+            await this.postMessage({ type: 'PREFERENCES', payload: { preferences } });
+        } catch {
+            await this.postMessage({
+                type: 'PREFERENCES',
+                payload: { preferences: { selectedModel: '', temperature: 0.2, responseLanguage: 'Korean' } },
+            });
         }
     }
 

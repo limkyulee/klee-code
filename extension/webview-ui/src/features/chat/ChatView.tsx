@@ -1,6 +1,12 @@
 import { useEffect, useReducer, useRef, useState, type FormEvent } from 'react';
 import { vscode } from './api/vscodeBridge';
-import type { ChatHistoryItem, ConversationMessage, ExtensionToWebviewMessage, ModelConfigState } from './api/webviewProtocol';
+import type {
+    AvailableModel,
+    ChatHistoryItem,
+    ConversationMessage,
+    ExtensionToWebviewMessage,
+    UserPreferencesState,
+} from './api/webviewProtocol';
 import { ChatInput } from './components/ChatInput';
 import { MessageList } from './components/MessageList';
 import { messageReducer } from './model/messageReducer';
@@ -19,7 +25,12 @@ export function ChatView() {
     const [modelLabel, setModelLabel] = useState('AI Model');
     const [auth, setAuth] = useState<AuthState>({ status: 'checking' });
     const [authMode, setAuthMode] = useState<'login' | 'register'>('login');
-    const [modelConfig, setModelConfig] = useState<ModelConfigState>({ configured: false });
+    const [models, setModels] = useState<AvailableModel[]>([]);
+    const [preferences, setPreferences] = useState<UserPreferencesState>({
+        selectedModel: '',
+        temperature: 0.2,
+        responseLanguage: 'Korean',
+    });
     const [history, setHistory] = useState<ChatHistoryItem[]>([]);
     const [activeConversationId, setActiveConversationId] = useState<string | undefined>();
     const [popover, setPopover] = useState<Popover>(null);
@@ -77,15 +88,19 @@ export function ChatView() {
                     return;
                 case 'SIGNED_OUT':
                     setAuth({ status: 'signedOut' });
-                    setModelConfig({ configured: false });
+                    setModels([]);
+                    setPreferences({ selectedModel: '', temperature: 0.2, responseLanguage: 'Korean' });
                     setHistory([]);
                     activateConversation(undefined, false);
                     dispatch({ type: 'reset' });
                     setStatus('Signed out');
                     setPopover('settings');
                     return;
-                case 'MODEL_CONFIG':
-                    setModelConfig(message.payload.modelConfig);
+                case 'MODELS':
+                    setModels(message.payload.models);
+                    return;
+                case 'PREFERENCES':
+                    setPreferences(message.payload.preferences);
                     return;
                 case 'CHAT_HISTORY':
                     setHistory(message.payload.history);
@@ -110,9 +125,7 @@ export function ChatView() {
                 case 'STATUS':
                     setStatus(`Backend: ${message.payload.backendUrl}`);
                     setModelLabel(
-                        message.payload.configured
-                            ? (message.payload.model ?? message.payload.provider ?? 'AI Model')
-                            : 'Model required',
+                        message.payload.model ?? message.payload.provider ?? 'AI Model',
                     );
                     return;
                 case 'REQUEST_STARTED':
@@ -237,8 +250,8 @@ export function ChatView() {
     }
 
     const signedIn = auth.status === 'signedIn';
-    const chatDisabled = auth.status !== 'signedIn' || !modelConfig.configured;
-    const disabledReason = auth.status === 'signedIn' ? 'Configure Coder URL and model in settings' : 'Sign in from settings';
+    const chatDisabled = auth.status !== 'signedIn';
+    const disabledReason = 'Sign in from settings';
     const statusText = signedIn ? `${auth.userId} · ${status}` : status;
 
     return (
@@ -290,7 +303,8 @@ export function ChatView() {
                             <SettingsPopover
                                 auth={auth}
                                 authMode={authMode}
-                                modelConfig={modelConfig}
+                                models={models}
+                                preferences={preferences}
                                 onAuthModeChange={setAuthMode}
                                 onLogout={logout}
                             />
@@ -401,12 +415,13 @@ function toChatMessage(message: ConversationMessage, index: number) {
 interface SettingsPopoverProps {
     auth: AuthState;
     authMode: 'login' | 'register';
-    modelConfig: ModelConfigState;
+    models: AvailableModel[];
+    preferences: UserPreferencesState;
     onAuthModeChange(mode: 'login' | 'register'): void;
     onLogout(): void;
 }
 
-function SettingsPopover({ auth, authMode, modelConfig, onAuthModeChange, onLogout }: SettingsPopoverProps) {
+function SettingsPopover({ auth, authMode, models, preferences, onAuthModeChange, onLogout }: SettingsPopoverProps) {
     if (auth.status !== 'signedIn') {
         return <AuthSettingsPanel mode={authMode} error={auth.status === 'signedOut' ? auth.error : undefined} onModeChange={onAuthModeChange} />;
     }
@@ -424,7 +439,7 @@ function SettingsPopover({ auth, authMode, modelConfig, onAuthModeChange, onLogo
                 </div>
             </div>
             <div className="settings-divider" />
-            <ModelSettingsForm modelConfig={modelConfig} />
+            <ModelSettingsForm models={models} preferences={preferences} />
             <div className="settings-divider" />
             <button className="settings-menu-item" type="button" onClick={onLogout}>
                 <span aria-hidden="true" className="settings-icon icon-logout" />
@@ -484,32 +499,78 @@ function AuthSettingsPanel({
     );
 }
 
-function ModelSettingsForm({ modelConfig }: { modelConfig: ModelConfigState }) {
-    const [baseUrl, setBaseUrl] = useState(modelConfig.baseUrl ?? '');
-    const [modelName, setModelName] = useState(modelConfig.modelName ?? '');
+function ModelSettingsForm({
+    models,
+    preferences,
+}: {
+    models: AvailableModel[];
+    preferences: UserPreferencesState;
+}) {
+    const defaultModel = models.find((model) => model.default)?.name ?? models[0]?.name ?? '';
+    const [selectedModel, setSelectedModel] = useState(preferences.selectedModel || defaultModel);
+    const [temperature, setTemperature] = useState(String(preferences.temperature ?? 0.2));
+    const [responseLanguage, setResponseLanguage] = useState(preferences.responseLanguage || 'Korean');
 
     useEffect(() => {
-        setBaseUrl(modelConfig.baseUrl ?? '');
-        setModelName(modelConfig.modelName ?? '');
-    }, [modelConfig.baseUrl, modelConfig.modelName]);
+        setSelectedModel(preferences.selectedModel || defaultModel);
+        setTemperature(String(preferences.temperature ?? 0.2));
+        setResponseLanguage(preferences.responseLanguage || 'Korean');
+    }, [defaultModel, preferences.responseLanguage, preferences.selectedModel, preferences.temperature]);
 
     function submit(event: FormEvent<HTMLFormElement>) {
         event.preventDefault();
-        vscode.postMessage({ type: 'SAVE_MODEL_CONFIG', payload: { baseUrl, modelName } });
+        vscode.postMessage({
+            type: 'SAVE_PREFERENCES',
+            payload: {
+                selectedModel,
+                temperature: Number(temperature),
+                responseLanguage,
+            },
+        });
     }
 
     return (
         <form className="form-stack compact-form" onSubmit={submit}>
             <div className="form-title">Coder settings</div>
             <label className="field">
-                <span>Coder URL</span>
-                <input value={baseUrl} onChange={(event) => setBaseUrl(event.target.value)} placeholder="http://localhost:11434" />
+                <span>Model</span>
+                <select value={selectedModel} onChange={(event) => setSelectedModel(event.target.value)}>
+                    {models.map((model) => (
+                        <option key={model.name} value={model.name}>
+                            {model.displayName}
+                        </option>
+                    ))}
+                </select>
             </label>
             <label className="field">
-                <span>Model</span>
-                <input value={modelName} onChange={(event) => setModelName(event.target.value)} placeholder="qwen2.5-coder:3b" />
+                <span>Temperature</span>
+                <div className="range-field">
+                    <input
+                        type="range"
+                        min="0"
+                        max="2"
+                        step="0.1"
+                        value={temperature}
+                        onChange={(event) => setTemperature(event.target.value)}
+                    />
+                    <input
+                        type="number"
+                        min="0"
+                        max="2"
+                        step="0.1"
+                        value={temperature}
+                        onChange={(event) => setTemperature(event.target.value)}
+                    />
+                </div>
             </label>
-            <button className="primary-button" type="submit">
+            <label className="field">
+                <span>Response language</span>
+                <select value={responseLanguage} onChange={(event) => setResponseLanguage(event.target.value)}>
+                    <option value="Korean">Korean</option>
+                    <option value="English">English</option>
+                </select>
+            </label>
+            <button className="primary-button" type="submit" disabled={!selectedModel}>
                 Save
             </button>
         </form>

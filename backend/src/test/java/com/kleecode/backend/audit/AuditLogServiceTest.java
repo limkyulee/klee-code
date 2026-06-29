@@ -44,7 +44,7 @@ class AuditLogServiceTest {
                 )
         );
 
-        var saved = auditLogService.start("user-1", request, "anthropic", true);
+        var saved = auditLogService.start("user-1", request, "ollama", false);
 
         assertTrue(saved.isPresent());
         assertEquals(AuditLogStatus.STARTED, saved.get().status());
@@ -78,7 +78,7 @@ class AuditLogServiceTest {
 
         ChatRequest request = new ChatRequest("conversation-3", null, "Explain this", null);
 
-        var saved = auditLogService.start("user-3", request, "anthropic", true);
+        var saved = auditLogService.start("user-3", request, "ollama", false);
         var updated = auditLogService.markFailed(saved, "boom");
 
         assertTrue(saved.isPresent());

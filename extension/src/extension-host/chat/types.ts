@@ -41,13 +41,13 @@ export interface ChatResponse {
 
 /** GET /chat/status 응답 바디 */
 export interface ChatStatus {
-    /** Whether the signed-in user has model configuration */
+    /** Whether the central LLM gateway is ready for this user */
     configured: boolean;
 
-    /** Spring AI provider 이름 */
+    /** 중앙 LLM provider 이름 */
     provider?: string;
 
-    /** provider 별 실제 모델 이름 */
+    /** 호출에 사용할 실제 모델 이름 */
     model?: string;
 }
 
@@ -65,11 +65,16 @@ export interface AuthResponse {
     user: UserProfile;
 }
 
-export interface ModelConfig {
-    configured: boolean;
-    provider?: 'OLLAMA';
-    baseUrl?: string;
-    modelName?: string;
+export interface AvailableModel {
+    name: string;
+    displayName: string;
+    default: boolean;
+}
+
+export interface UserPreferences {
+    selectedModel: string;
+    temperature: number;
+    responseLanguage: string;
 }
 
 export interface ChatHistoryItem {
