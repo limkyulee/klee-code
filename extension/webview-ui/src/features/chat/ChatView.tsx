@@ -24,6 +24,13 @@ export function ChatView() {
     const [activeConversationId, setActiveConversationId] = useState<string | undefined>();
     const [popover, setPopover] = useState<Popover>(null);
     const headerActionsRef = useRef<HTMLDivElement>(null);
+    const activeConversationIdRef = useRef<string | undefined>(undefined);
+
+    function activateConversation(conversationId: string | undefined, nextPending: boolean) {
+        activeConversationIdRef.current = conversationId;
+        setActiveConversationId(conversationId);
+        setPending(nextPending);
+    }
 
     useEffect(() => {
         function handlePointerDown(event: PointerEvent) {
@@ -72,7 +79,7 @@ export function ChatView() {
                     setAuth({ status: 'signedOut' });
                     setModelConfig({ configured: false });
                     setHistory([]);
-                    setActiveConversationId(undefined);
+                    activateConversation(undefined, false);
                     dispatch({ type: 'reset' });
                     setStatus('Signed out');
                     setPopover('settings');
@@ -84,9 +91,8 @@ export function ChatView() {
                     setHistory(message.payload.history);
                     return;
                 case 'CONVERSATION_LOADED':
-                    setActiveConversationId(message.payload.conversationId);
+                    activateConversation(message.payload.conversationId, message.payload.pending ?? false);
                     setPopover(null);
-                    setPending(false);
                     setStatus('Conversation loaded');
                     dispatch({
                         type: 'replace',
@@ -96,8 +102,7 @@ export function ChatView() {
                 case 'CONVERSATION_DELETED':
                     setHistory((items) => items.filter((item) => item.conversationId !== message.payload.conversationId));
                     if (message.payload.activeReset) {
-                        setActiveConversationId(undefined);
-                        setPending(false);
+                        activateConversation(message.payload.nextConversationId, false);
                         setStatus('Conversation deleted');
                         dispatch({ type: 'reset' });
                     }
@@ -111,8 +116,7 @@ export function ChatView() {
                     );
                     return;
                 case 'REQUEST_STARTED':
-                    setPending(true);
-                    setActiveConversationId(message.payload.conversationId);
+                    activateConversation(message.payload.conversationId, true);
                     dispatch({
                         type: 'add',
                         id: message.payload.messageId,
@@ -125,6 +129,9 @@ export function ChatView() {
                     });
                     return;
                 case 'REQUEST_STOPPED':
+                    if (message.payload.conversationId !== activeConversationIdRef.current) {
+                        return;
+                    }
                     setPending(false);
                     dispatch({
                         type: 'appendProgress',
@@ -134,6 +141,9 @@ export function ChatView() {
                     dispatch({ type: 'finish', id: message.payload.messageId });
                     return;
                 case 'PROGRESS_DELTA':
+                    if (message.payload.conversationId !== activeConversationIdRef.current) {
+                        return;
+                    }
                     dispatch({
                         type: 'appendProgress',
                         id: message.payload.messageId,
@@ -141,6 +151,9 @@ export function ChatView() {
                     });
                     return;
                 case 'ASSISTANT_DELTA':
+                    if (message.payload.conversationId !== activeConversationIdRef.current) {
+                        return;
+                    }
                     dispatch({
                         type: 'appendText',
                         id: message.payload.messageId,
@@ -148,22 +161,35 @@ export function ChatView() {
                     });
                     return;
                 case 'USER_MESSAGE':
-                    dispatch({ type: 'add', message: { role: 'user', text: message.payload.text } });
+                    if (!activeConversationIdRef.current) {
+                        activateConversation(message.payload.conversationId, false);
+                    }
+                    if (message.payload.conversationId !== activeConversationIdRef.current) {
+                        return;
+                    }
+                    dispatch({ type: 'add', id: message.payload.message.id, message: toChatMessage(message.payload.message, 0) });
                     return;
                 case 'ASSISTANT_RESPONSE':
+                    if (message.payload.conversationId !== activeConversationIdRef.current) {
+                        return;
+                    }
                     setPending(false);
                     dispatch({ type: 'finish', id: message.payload.messageId });
                     return;
                 case 'ERROR':
-                    setPending(false);
+                    if (message.payload.conversationId && message.payload.conversationId !== activeConversationIdRef.current) {
+                        return;
+                    }
+                    if (message.payload.conversationId) {
+                        setPending(false);
+                    }
                     if (message.payload.messageId) {
                         dispatch({ type: 'finish', id: message.payload.messageId });
                     }
                     dispatch({ type: 'add', message: { role: 'error', text: message.payload.message } });
                     return;
                 case 'CONVERSATION_RESET':
-                    setActiveConversationId(undefined);
-                    setPending(false);
+                    activateConversation(message.payload.conversationId, message.payload.pending ?? false);
                     setStatus('New conversation');
                     dispatch({ type: 'reset' });
                     return;
@@ -177,7 +203,6 @@ export function ChatView() {
     }, []);
 
     function sendMessage(text: string) {
-        dispatch({ type: 'add', message: { role: 'user', text } });
         vscode.postMessage({ type: 'SEND_MESSAGE', payload: { text } });
     }
 
@@ -202,16 +227,10 @@ export function ChatView() {
     }
 
     function selectConversation(conversationId: string) {
-        if (pending) {
-            return;
-        }
         vscode.postMessage({ type: 'SELECT_CONVERSATION', payload: { conversationId } });
     }
 
     function deleteConversation(conversationId: string) {
-        if (pending) {
-            return;
-        }
         if (window.confirm('Delete this conversation permanently?')) {
             vscode.postMessage({ type: 'DELETE_CONVERSATION', payload: { conversationId } });
         }
@@ -261,7 +280,7 @@ export function ChatView() {
                             <HistoryPopover
                                 activeConversationId={activeConversationId}
                                 auth={auth}
-                                disabled={pending}
+                                disabled={false}
                                 history={history}
                                 onDelete={deleteConversation}
                                 onSelect={selectConversation}
@@ -371,9 +390,11 @@ function HistoryPopover({
 
 function toChatMessage(message: ConversationMessage, index: number) {
     return {
-        id: `${message.createdAt}-${index}`,
+        id: message.id ?? `${message.createdAt}-${index}`,
         role: message.role,
         text: message.text,
+        progress: message.progress,
+        streaming: message.streaming,
     };
 }
 

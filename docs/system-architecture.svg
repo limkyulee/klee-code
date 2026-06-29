@@ -1,0 +1,169 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1440" height="1040" viewBox="0 0 1440 1040" role="img" aria-labelledby="title desc">
+  <title id="title">Klee Code System Architecture</title>
+  <desc id="desc">VS Code extension, Spring Boot backend, MongoDB, and single Ollama LLM server architecture with multi conversation streaming flow.</desc>
+  <defs>
+    <style>
+      .bg { fill: #f6f7f9; }
+      .lane { fill: #ffffff; stroke: #d7dde5; stroke-width: 2; }
+      .box { fill: #ffffff; stroke: #9aa8b7; stroke-width: 2; }
+      .box-blue { fill: #e8f2ff; stroke: #5e8fc7; }
+      .box-green { fill: #e9f7ef; stroke: #5a9d72; }
+      .box-yellow { fill: #fff6db; stroke: #c49632; }
+      .box-red { fill: #fff0ee; stroke: #c46c62; }
+      .box-gray { fill: #eef1f4; stroke: #8d98a5; }
+      .title { fill: #182230; font: 700 34px Arial, sans-serif; }
+      .subtitle { fill: #4b5b6b; font: 18px Arial, sans-serif; }
+      .lane-title { fill: #263544; font: 700 22px Arial, sans-serif; }
+      .label { fill: #1f2a37; font: 700 18px Arial, sans-serif; }
+      .text { fill: #344054; font: 15px Arial, sans-serif; }
+      .small { fill: #475467; font: 13px Arial, sans-serif; }
+      .arrow { fill: none; stroke: #344054; stroke-width: 2.4; marker-end: url(#arrowhead); }
+      .arrow-blue { fill: none; stroke: #2f6fab; stroke-width: 2.4; marker-end: url(#arrowhead-blue); }
+      .arrow-green { fill: none; stroke: #31865a; stroke-width: 2.4; marker-end: url(#arrowhead-green); }
+      .arrow-dashed { fill: none; stroke: #6b7280; stroke-width: 2; stroke-dasharray: 7 7; marker-end: url(#arrowhead-gray); }
+      .pill { fill: #f2f4f7; stroke: #cfd6df; }
+      .note { fill: #ffffff; stroke: #cfd6df; stroke-width: 1.5; }
+    </style>
+    <marker id="arrowhead" markerWidth="12" markerHeight="8" refX="11" refY="4" orient="auto">
+      <path d="M0,0 L12,4 L0,8 Z" fill="#344054" />
+    </marker>
+    <marker id="arrowhead-blue" markerWidth="12" markerHeight="8" refX="11" refY="4" orient="auto">
+      <path d="M0,0 L12,4 L0,8 Z" fill="#2f6fab" />
+    </marker>
+    <marker id="arrowhead-green" markerWidth="12" markerHeight="8" refX="11" refY="4" orient="auto">
+      <path d="M0,0 L12,4 L0,8 Z" fill="#31865a" />
+    </marker>
+    <marker id="arrowhead-gray" markerWidth="12" markerHeight="8" refX="11" refY="4" orient="auto">
+      <path d="M0,0 L12,4 L0,8 Z" fill="#6b7280" />
+    </marker>
+  </defs>
+
+  <rect class="bg" x="0" y="0" width="1440" height="1040" />
+
+  <text class="title" x="52" y="58">Klee Code System Architecture</text>
+  <text class="subtitle" x="54" y="88">단일 Ollama LLM 서버를 사용하는 VS Code 확장 기반 다중 대화 스트리밍 구조</text>
+
+  <rect class="lane" x="40" y="122" width="390" height="760" rx="14" />
+  <rect class="lane" x="470" y="122" width="520" height="760" rx="14" />
+  <rect class="lane" x="1030" y="122" width="370" height="760" rx="14" />
+
+  <text class="lane-title" x="68" y="164">VS Code Extension</text>
+  <text class="lane-title" x="498" y="164">Spring Boot Backend</text>
+  <text class="lane-title" x="1058" y="164">Data / Model Runtime</text>
+
+  <rect class="box box-blue" x="78" y="198" width="314" height="118" rx="10" />
+  <text class="label" x="106" y="232">Webview UI</text>
+  <text class="text" x="106" y="260">- ChatView / MessageList / ChatInput</text>
+  <text class="text" x="106" y="284">- 현재 선택한 conversationId만 렌더링</text>
+  <text class="text" x="106" y="308">- SSE 이벤트를 화면 메시지로 반영</text>
+
+  <rect class="box box-blue" x="78" y="366" width="314" height="160" rx="10" />
+  <text class="label" x="106" y="400">Extension Host</text>
+  <text class="text" x="106" y="428">- ChatWebviewMessageHandler</text>
+  <text class="text" x="106" y="452">- AuthSession / SecretStorage</text>
+  <text class="text" x="106" y="476">- activeRequests: Map&lt;conversationId, request&gt;</text>
+  <text class="text" x="106" y="500">- conversationSnapshots: 진행 중 화면 복원</text>
+
+  <rect class="box box-gray" x="78" y="578" width="314" height="114" rx="10" />
+  <text class="label" x="106" y="612">Local IDE Context</text>
+  <text class="text" x="106" y="640">- activeTextEditor</text>
+  <text class="text" x="106" y="664">- 선택 코드 / 파일 경로 / 언어</text>
+
+  <rect class="box box-green" x="515" y="198" width="200" height="118" rx="10" />
+  <text class="label" x="542" y="232">Auth Domain</text>
+  <text class="text" x="542" y="260">- /auth/login</text>
+  <text class="text" x="542" y="284">- JWT 발급/갱신</text>
+
+  <rect class="box box-green" x="750" y="198" width="200" height="118" rx="10" />
+  <text class="label" x="774" y="232">Model Config</text>
+  <text class="text" x="774" y="260">- /model-config</text>
+  <text class="text" x="774" y="284">- 사용자별 Ollama URL/모델</text>
+
+  <rect class="box box-green" x="515" y="366" width="200" height="160" rx="10" />
+  <text class="label" x="542" y="400">Chat Domain</text>
+  <text class="text" x="542" y="428">- /chat/stream</text>
+  <text class="text" x="542" y="452">- SSE: progress/token/done</text>
+  <text class="text" x="542" y="476">- ChatService</text>
+  <text class="text" x="542" y="500">- LLM 호출/응답 누적</text>
+
+  <rect class="box box-green" x="750" y="366" width="200" height="160" rx="10" />
+  <text class="label" x="774" y="400">Conversation Domain</text>
+  <text class="text" x="774" y="428">- /conversations</text>
+  <text class="text" x="774" y="452">- 목록/상세/삭제</text>
+  <text class="text" x="774" y="476">- 턴 시작/완료 기록</text>
+  <text class="text" x="774" y="500">- userId + conversationId 검증</text>
+
+  <rect class="box box-yellow" x="615" y="594" width="235" height="118" rx="10" />
+  <text class="label" x="642" y="628">Spring AI Adapter</text>
+  <text class="text" x="642" y="656">- ChatClient</text>
+  <text class="text" x="642" y="680">- ChatMemory Advisor</text>
+  <text class="text" x="642" y="704">- conversationId 기반 메모리 주입</text>
+
+  <rect class="box box-yellow" x="1070" y="198" width="290" height="170" rx="10" />
+  <text class="label" x="1098" y="232">MongoDB</text>
+  <text class="text" x="1098" y="260">- users</text>
+  <text class="text" x="1098" y="284">- user_sessions</text>
+  <text class="text" x="1098" y="308">- user_model_configs</text>
+  <text class="text" x="1098" y="332">- conversations</text>
+  <text class="text" x="1098" y="356">- audit_logs / chat memory</text>
+
+  <rect class="box box-red" x="1070" y="480" width="290" height="170" rx="10" />
+  <text class="label" x="1098" y="514">Single Ollama Server</text>
+  <text class="text" x="1098" y="542">- 하나의 LLM 런타임</text>
+  <text class="text" x="1098" y="566">- 여러 HTTP 요청 수신 가능</text>
+  <text class="text" x="1098" y="590">- 실제 병렬/큐잉은 서버가 결정</text>
+  <text class="text" x="1098" y="614">- 앱은 대화별 스트림만 분리</text>
+
+  <rect class="note" x="74" y="738" width="318" height="104" rx="10" />
+  <text class="label" x="102" y="772">다중 대화 원칙</text>
+  <text class="text" x="102" y="800">대화 A 생성 중에도 대화 B를 열 수 있음</text>
+  <text class="text" x="102" y="824">같은 conversationId 안에서는 요청 1개만 허용</text>
+
+  <rect class="note" x="520" y="760" width="420" height="82" rx="10" />
+  <text class="label" x="548" y="794">보안 경계</text>
+  <text class="text" x="548" y="822">모든 대화 조회/삭제/저장은 userId + conversationId로 검증</text>
+
+  <rect class="note" x="1070" y="738" width="290" height="104" rx="10" />
+  <text class="label" x="1098" y="772">중요한 구분</text>
+  <text class="text" x="1098" y="800">앱의 다중 대화 관리와</text>
+  <text class="text" x="1098" y="824">LLM의 실제 병렬 추론은 별개</text>
+
+  <path class="arrow-blue" d="M235 316 L235 366" />
+  <text class="small" x="250" y="344">postMessage</text>
+
+  <path class="arrow" d="M392 430 C430 430 463 430 515 430" />
+  <text class="small" x="407" y="416">POST /chat/stream + JWT</text>
+
+  <path class="arrow" d="M392 472 C435 472 472 472 515 472" />
+  <text class="small" x="407" y="496">SSE token stream</text>
+
+  <path class="arrow" d="M392 632 C470 632 535 650 615 650" />
+  <text class="small" x="406" y="620">selected code context</text>
+
+  <path class="arrow-green" d="M615 526 L660 594" />
+  <path class="arrow-green" d="M850 526 L800 594" />
+
+  <path class="arrow" d="M850 366 C850 300 970 284 1070 284" />
+  <text class="small" x="882" y="302">대화/감사 로그 저장</text>
+
+  <path class="arrow" d="M615 366 C615 300 884 248 1070 248" />
+  <text class="small" x="720" y="264">사용자 설정/세션 조회</text>
+
+  <path class="arrow-green" d="M850 650 C930 650 980 565 1070 565" />
+  <text class="small" x="908" y="628">LLM prompt/stream</text>
+
+  <path class="arrow-dashed" d="M1070 604 C980 700 910 704 850 704" />
+  <text class="small" x="908" y="694">응답 토큰 반환</text>
+
+  <path class="arrow-dashed" d="M515 492 C455 535 425 548 392 548" />
+  <text class="small" x="405" y="546">progress/token/done</text>
+
+  <rect class="pill" x="514" y="904" width="370" height="42" rx="21" />
+  <text class="text" x="542" y="931">1. 로그인 세션: JWT로 사용자 식별</text>
+  <rect class="pill" x="514" y="956" width="370" height="42" rx="21" />
+  <text class="text" x="542" y="983">2. 대화 세션: conversationId로 채팅방 분리</text>
+  <rect class="pill" x="914" y="904" width="370" height="42" rx="21" />
+  <text class="text" x="942" y="931">3. 실행 세션: SSE 연결 하나가 응답 생성 1회</text>
+  <rect class="pill" x="914" y="956" width="370" height="42" rx="21" />
+  <text class="text" x="942" y="983">4. LLM 병렬성: Ollama 서버/하드웨어 정책에 따름</text>
+</svg>

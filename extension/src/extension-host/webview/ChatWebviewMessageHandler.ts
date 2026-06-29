@@ -27,10 +27,28 @@ export type WebviewMessage =
     | { type: 'STOP_GENERATION' }
     | { type: 'NEW_CONVERSATION' };
 
+type ConversationMessageStatus = 'STARTED' | 'SUCCEEDED' | 'FAILED';
+type ConversationMessageRole = 'user' | 'assistant' | 'error';
+
+interface ConversationSnapshotMessage {
+    id: string;
+    role: ConversationMessageRole;
+    text: string;
+    progress?: string[];
+    streaming?: boolean;
+    createdAt: string;
+    status: ConversationMessageStatus;
+}
+
+interface ActiveRequest {
+    abortController: AbortController;
+    assistantMessageId: string;
+}
+
 export class ChatWebviewMessageHandler {
     private conversationId: string = randomUUID();
-    private activeAbortController: AbortController | undefined;
-    private activeMessageId: string | undefined;
+    private readonly activeRequests = new Map<string, ActiveRequest>();
+    private readonly conversationSnapshots = new Map<string, ConversationSnapshotMessage[]>();
 
     constructor(
         private readonly postMessage: (message: Record<string, unknown>) => Thenable<boolean>,
@@ -76,14 +94,15 @@ export class ChatWebviewMessageHandler {
     }
 
     async askExternal(question: string): Promise<void> {
-        await this.postMessage({ type: 'USER_MESSAGE', payload: { text: question } });
         await this.ask(question);
     }
 
     async resetConversation(): Promise<void> {
-        this.abortActiveRequestWithoutNotification();
         this.conversationId = randomUUID();
-        await this.postMessage({ type: 'CONVERSATION_RESET', payload: { conversationId: this.conversationId } });
+        await this.postMessage({
+            type: 'CONVERSATION_RESET',
+            payload: { conversationId: this.conversationId, pending: this.isConversationPending(this.conversationId) },
+        });
     }
 
     private async ask(question: string): Promise<void> {
@@ -93,23 +112,45 @@ export class ChatWebviewMessageHandler {
             return;
         }
 
-        if (this.activeAbortController) {
+        const targetConversationId = this.conversationId;
+        if (this.activeRequests.has(targetConversationId)) {
             return;
         }
 
         const assistantMessageId = randomUUID();
         const abortController = new AbortController();
-        this.activeAbortController = abortController;
-        this.activeMessageId = assistantMessageId;
+        this.activeRequests.set(targetConversationId, { abortController, assistantMessageId });
+
+        const userMessage = this.appendSnapshotMessage(targetConversationId, {
+            id: randomUUID(),
+            role: 'user',
+            text: trimmedQuestion,
+            createdAt: new Date().toISOString(),
+            status: 'STARTED',
+        });
+        const assistantMessage = this.appendSnapshotMessage(targetConversationId, {
+            id: assistantMessageId,
+            role: 'assistant',
+            text: '',
+            progress: ['Request sent. Waiting for the model stream...'],
+            streaming: true,
+            createdAt: new Date().toISOString(),
+            status: 'STARTED',
+        });
+
+        await this.postMessage({
+            type: 'USER_MESSAGE',
+            payload: { conversationId: targetConversationId, message: userMessage },
+        });
 
         await this.postMessage({
             type: 'REQUEST_STARTED',
-            payload: { messageId: assistantMessageId, conversationId: this.conversationId },
+            payload: { messageId: assistantMessage.id, conversationId: targetConversationId },
         });
 
         try {
             const editor = vscode.window.activeTextEditor;
-            const request = buildChatRequest(editor, this.conversationId, trimmedQuestion);
+            const request = buildChatRequest(editor, targetConversationId, trimmedQuestion);
             await this.withAuthorizedRetry((accessToken) =>
                 sendChatMessageStream(
                     request,
@@ -117,19 +158,30 @@ export class ChatWebviewMessageHandler {
                         onProgressDelta: async (text) => {
                             void this.postMessage({
                                 type: 'PROGRESS_DELTA',
-                                payload: { messageId: assistantMessageId, text },
+                                payload: {
+                                    messageId: assistantMessageId,
+                                    conversationId: targetConversationId,
+                                    text,
+                                },
                             });
+                            this.appendSnapshotProgress(targetConversationId, assistantMessageId, text);
                         },
                         onAnswerDelta: async (text) => {
                             void this.postMessage({
                                 type: 'ASSISTANT_DELTA',
-                                payload: { messageId: assistantMessageId, text },
+                                payload: {
+                                    messageId: assistantMessageId,
+                                    conversationId: targetConversationId,
+                                    text,
+                                },
                             });
+                            this.appendSnapshotText(targetConversationId, assistantMessageId, text);
                         },
                         onDone: async () => {
+                            this.finishSnapshotMessage(targetConversationId, assistantMessageId, 'SUCCEEDED');
                             void this.postMessage({
                                 type: 'ASSISTANT_RESPONSE',
-                                payload: { messageId: assistantMessageId },
+                                payload: { messageId: assistantMessageId, conversationId: targetConversationId },
                             });
                         },
                     },
@@ -140,27 +192,35 @@ export class ChatWebviewMessageHandler {
             await this.postChatHistory();
         } catch (err) {
             if (isAbortError(err)) {
-                if (this.activeMessageId === assistantMessageId) {
-                    await this.postMessage({
-                        type: 'REQUEST_STOPPED',
-                        payload: { messageId: assistantMessageId },
-                    });
-                }
+                this.appendSnapshotProgress(targetConversationId, assistantMessageId, 'Response stopped.');
+                this.finishSnapshotMessage(targetConversationId, assistantMessageId, 'STARTED');
+                await this.postMessage({
+                    type: 'REQUEST_STOPPED',
+                    payload: { messageId: assistantMessageId, conversationId: targetConversationId },
+                });
                 return;
             }
 
             const message = err instanceof Error ? err.message : String(err);
+            this.finishSnapshotMessage(targetConversationId, assistantMessageId, 'FAILED');
+            this.appendSnapshotMessage(targetConversationId, {
+                id: randomUUID(),
+                role: 'error',
+                text: message,
+                createdAt: new Date().toISOString(),
+                status: 'FAILED',
+            });
             await this.postMessage({
                 type: 'ERROR',
                 payload: {
+                    conversationId: targetConversationId,
                     messageId: assistantMessageId,
                     message,
                 },
             });
         } finally {
-            if (this.activeAbortController === abortController) {
-                this.activeAbortController = undefined;
-                this.activeMessageId = undefined;
+            if (this.activeRequests.get(targetConversationId)?.abortController === abortController) {
+                this.activeRequests.delete(targetConversationId);
             }
         }
     }
@@ -186,14 +246,76 @@ export class ChatWebviewMessageHandler {
     }
 
     private stopActiveRequest(): void {
-        this.activeAbortController?.abort();
+        this.activeRequests.get(this.conversationId)?.abortController.abort();
     }
 
     private abortActiveRequestWithoutNotification(): void {
-        const abortController = this.activeAbortController;
-        this.activeAbortController = undefined;
-        this.activeMessageId = undefined;
-        abortController?.abort();
+        for (const request of this.activeRequests.values()) {
+            request.abortController.abort();
+        }
+        this.activeRequests.clear();
+    }
+
+    private abortConversationWithoutNotification(conversationId: string): void {
+        const request = this.activeRequests.get(conversationId);
+        this.activeRequests.delete(conversationId);
+        request?.abortController.abort();
+    }
+
+    private isConversationPending(conversationId: string): boolean {
+        return this.activeRequests.has(conversationId);
+    }
+
+    private appendSnapshotMessage(
+        conversationId: string,
+        message: ConversationSnapshotMessage,
+    ): ConversationSnapshotMessage {
+        const messages = this.conversationSnapshots.get(conversationId) ?? [];
+        messages.push(message);
+        this.conversationSnapshots.set(conversationId, messages);
+        return message;
+    }
+
+    private appendSnapshotText(conversationId: string, messageId: string, text: string): void {
+        this.updateSnapshotMessage(conversationId, messageId, (message) => ({
+            ...message,
+            text: `${message.text}${text}`,
+        }));
+    }
+
+    private appendSnapshotProgress(conversationId: string, messageId: string, text: string): void {
+        this.updateSnapshotMessage(conversationId, messageId, (message) => ({
+            ...message,
+            progress: [...(message.progress ?? []), text],
+        }));
+    }
+
+    private finishSnapshotMessage(
+        conversationId: string,
+        messageId: string,
+        status: ConversationMessageStatus,
+    ): void {
+        this.updateSnapshotMessage(conversationId, messageId, (message) => ({
+            ...message,
+            status,
+            streaming: false,
+        }));
+    }
+
+    private updateSnapshotMessage(
+        conversationId: string,
+        messageId: string,
+        update: (message: ConversationSnapshotMessage) => ConversationSnapshotMessage,
+    ): void {
+        const messages = this.conversationSnapshots.get(conversationId);
+        if (!messages) {
+            return;
+        }
+
+        this.conversationSnapshots.set(
+            conversationId,
+            messages.map((message) => (message.id === messageId ? update(message) : message)),
+        );
     }
 
     private async restoreSession(): Promise<void> {
@@ -270,23 +392,36 @@ export class ChatWebviewMessageHandler {
     }
 
     private async selectConversation(conversationId: string): Promise<void> {
-        if (this.activeAbortController) {
+        if (this.activeRequests.has(conversationId)) {
+            this.conversationId = conversationId;
+            await this.postMessage({
+                type: 'CONVERSATION_LOADED',
+                payload: {
+                    conversationId,
+                    messages: this.conversationSnapshots.get(conversationId) ?? [],
+                    pending: true,
+                },
+            });
             return;
         }
 
         try {
             const detail = await this.withAuthorizedRetry((accessToken) => getConversation(conversationId, { accessToken }));
             this.conversationId = detail.conversationId;
-            await this.postMessage({ type: 'CONVERSATION_LOADED', payload: detail });
+            await this.postMessage({
+                type: 'CONVERSATION_LOADED',
+                payload: {
+                    ...detail,
+                    pending: this.isConversationPending(detail.conversationId),
+                },
+            });
         } catch (err) {
             await this.postMessage({ type: 'ERROR', payload: { message: toErrorMessage(err) } });
         }
     }
 
     private async deleteConversation(conversationId: string): Promise<void> {
-        if (this.activeAbortController) {
-            return;
-        }
+        this.abortConversationWithoutNotification(conversationId);
 
         try {
             await this.withAuthorizedRetry((accessToken) => deleteConversation(conversationId, { accessToken }));
@@ -294,6 +429,7 @@ export class ChatWebviewMessageHandler {
             if (activeReset) {
                 this.conversationId = randomUUID();
             }
+            this.conversationSnapshots.delete(conversationId);
             await this.postMessage({
                 type: 'CONVERSATION_DELETED',
                 payload: { conversationId, activeReset, nextConversationId: this.conversationId },

@@ -29,13 +29,13 @@ export type ExtensionToWebviewMessage =
       }
     | { type: 'STATUS'; payload: { backendUrl: string; configured?: boolean; provider?: string; model?: string } }
     | { type: 'REQUEST_STARTED'; payload: { messageId: string; conversationId: string } }
-    | { type: 'REQUEST_STOPPED'; payload: { messageId: string } }
-    | { type: 'USER_MESSAGE'; payload: { text: string } }
-    | { type: 'PROGRESS_DELTA'; payload: { messageId: string; text: string } }
-    | { type: 'ASSISTANT_DELTA'; payload: { messageId: string; text: string } }
-    | { type: 'ASSISTANT_RESPONSE'; payload: { messageId: string } }
-    | { type: 'ERROR'; payload: { message: string; messageId?: string } }
-    | { type: 'CONVERSATION_RESET'; payload: { conversationId: string } };
+    | { type: 'REQUEST_STOPPED'; payload: { messageId: string; conversationId: string } }
+    | { type: 'USER_MESSAGE'; payload: { conversationId: string; message: ConversationMessage } }
+    | { type: 'PROGRESS_DELTA'; payload: { messageId: string; conversationId: string; text: string } }
+    | { type: 'ASSISTANT_DELTA'; payload: { messageId: string; conversationId: string; text: string } }
+    | { type: 'ASSISTANT_RESPONSE'; payload: { messageId: string; conversationId: string } }
+    | { type: 'ERROR'; payload: { message: string; conversationId?: string; messageId?: string } }
+    | { type: 'CONVERSATION_RESET'; payload: { conversationId: string; pending?: boolean } };
 
 export interface ModelConfigState {
     configured: boolean;
@@ -55,8 +55,11 @@ export interface ChatHistoryItem {
 }
 
 export interface ConversationMessage {
+    id?: string;
     role: 'user' | 'assistant' | 'error';
     text: string;
+    progress?: string[];
+    streaming?: boolean;
     createdAt: string;
     status: 'STARTED' | 'SUCCEEDED' | 'FAILED';
 }
@@ -64,4 +67,5 @@ export interface ConversationMessage {
 export interface ConversationDetail {
     conversationId: string;
     messages: ConversationMessage[];
+    pending?: boolean;
 }
