@@ -14,7 +14,7 @@ import {
 import { getBackendUrl } from '../config/settings';
 import { buildChatRequest } from '../chat/context';
 import { readWorkspaceKleeContext } from '../chat/kleeContext';
-import { isClearCommand, parseSlashSkillCommand } from '../chat/slashCommand';
+import { parseSlashCommand, type LocalSlashCommandName } from '../chat/slashCommand';
 import { AuthSession } from '../services/authSession';
 
 export type WebviewMessage =
@@ -129,6 +129,14 @@ export class ChatWebviewMessageHandler {
         await this.postChatHistory();
     }
 
+    private async handleLocalSlashCommand(commandName: LocalSlashCommandName): Promise<void> {
+        switch (commandName) {
+            case 'clear':
+                await this.clearConversation();
+                return;
+        }
+    }
+
     private async ask(question: string): Promise<void> {
         const trimmedQuestion = question.trim();
 
@@ -136,8 +144,9 @@ export class ChatWebviewMessageHandler {
             return;
         }
 
-        if (isClearCommand(trimmedQuestion)) {
-            await this.clearConversation();
+        const parsedCommand = parseSlashCommand(trimmedQuestion);
+        if (parsedCommand.type === 'local') {
+            await this.handleLocalSlashCommand(parsedCommand.name);
             return;
         }
 
@@ -179,10 +188,10 @@ export class ChatWebviewMessageHandler {
 
         try {
             const editor = vscode.window.activeTextEditor;
-            const parsedQuestion = parseSlashSkillCommand(trimmedQuestion);
-            const kleeContext = await readWorkspaceKleeContext(parsedQuestion.skillCommand?.name);
-            const request = buildChatRequest(editor, targetConversationId, parsedQuestion.question, {
-                skillCommand: parsedQuestion.skillCommand,
+            const skillCommand = parsedCommand.type === 'promptSkill' ? parsedCommand.skillCommand : undefined;
+            const kleeContext = await readWorkspaceKleeContext(skillCommand?.name);
+            const request = buildChatRequest(editor, targetConversationId, parsedCommand.question, {
+                skillCommand,
                 kleeContext,
             });
             await this.withAuthorizedRetry((accessToken) =>

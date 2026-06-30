@@ -1,10 +1,13 @@
-import { FormEvent, KeyboardEvent, useEffect, useRef, useState } from 'react';
+import { FormEvent, KeyboardEvent, useEffect, useMemo, useRef, useState } from 'react';
+import type { AvailableModel } from '../api/webviewProtocol';
 
 interface ChatInputProps {
-    modelLabel: string;
+    models: AvailableModel[];
+    selectedModel: string;
     pending: boolean;
     disabled?: boolean;
     disabledReason?: string;
+    onModelChange(modelName: string): void;
     onNewConversation(): void;
     onSend(text: string): void;
     onStop(): void;
@@ -29,10 +32,12 @@ const approvalModes = [
 ] as const;
 
 export function ChatInput({
-    modelLabel,
+    models,
+    selectedModel,
     pending,
     disabled = false,
     disabledReason = 'Chat is unavailable',
+    onModelChange,
     onNewConversation,
     onSend,
     onStop,
@@ -42,6 +47,10 @@ export function ChatInput({
     const [selectedModeId, setSelectedModeId] = useState<(typeof approvalModes)[number]['id']>('ask');
     const menuRef = useRef<HTMLDivElement>(null);
     const selectedMode = approvalModes.find((mode) => mode.id === selectedModeId) ?? approvalModes[0];
+    const selectedModelLabel = useMemo(
+        () => models.find((model) => model.name === selectedModel)?.displayName || selectedModel || 'AI Model',
+        [models, selectedModel],
+    );
 
     useEffect(() => {
         function handlePointerDown(event: PointerEvent) {
@@ -163,9 +172,25 @@ export function ChatInput({
                     </div>
                 </div>
                 <div className="composer-right">
-                    <div className="model-pill" title={modelLabel}>
-                        {modelLabel}
-                    </div>
+                    <label className="model-select" title={selectedModelLabel}>
+                        <span className="sr-only">Model</span>
+                        <select
+                            aria-label="Model"
+                            disabled={disabled || models.length === 0}
+                            onChange={(event) => onModelChange(event.target.value)}
+                            value={selectedModel}
+                        >
+                            {models.length === 0 ? (
+                                <option value="">AI Model</option>
+                            ) : (
+                                models.map((model) => (
+                                    <option key={model.name} value={model.name}>
+                                        {model.displayName}
+                                    </option>
+                                ))
+                            )}
+                        </select>
+                    </label>
                     <button
                         aria-label={pending ? 'Stop response' : 'Send message'}
                         className={`send icon-only${pending ? ' stop' : ''}`}

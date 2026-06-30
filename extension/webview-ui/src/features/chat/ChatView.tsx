@@ -22,7 +22,6 @@ export function ChatView() {
     const [messages, dispatch] = useReducer(messageReducer, []);
     const [pending, setPending] = useState(false);
     const [status, setStatus] = useState('Connecting...');
-    const [modelLabel, setModelLabel] = useState('AI Model');
     const [auth, setAuth] = useState<AuthState>({ status: 'checking' });
     const [authMode, setAuthMode] = useState<'login' | 'register'>('login');
     const [models, setModels] = useState<AvailableModel[]>([]);
@@ -31,6 +30,7 @@ export function ChatView() {
         temperature: 0.2,
         responseLanguage: 'Korean',
     });
+    const [preferencesLoaded, setPreferencesLoaded] = useState(false);
     const [history, setHistory] = useState<ChatHistoryItem[]>([]);
     const [activeConversationId, setActiveConversationId] = useState<string | undefined>();
     const [popover, setPopover] = useState<Popover>(null);
@@ -90,6 +90,7 @@ export function ChatView() {
                     setAuth({ status: 'signedOut' });
                     setModels([]);
                     setPreferences({ selectedModel: '', temperature: 0.2, responseLanguage: 'Korean' });
+                    setPreferencesLoaded(false);
                     setHistory([]);
                     activateConversation(undefined, false);
                     dispatch({ type: 'reset' });
@@ -101,6 +102,7 @@ export function ChatView() {
                     return;
                 case 'PREFERENCES':
                     setPreferences(message.payload.preferences);
+                    setPreferencesLoaded(true);
                     return;
                 case 'CHAT_HISTORY':
                     setHistory(message.payload.history);
@@ -124,9 +126,6 @@ export function ChatView() {
                     return;
                 case 'STATUS':
                     setStatus(`Backend: ${message.payload.backendUrl}`);
-                    setModelLabel(
-                        message.payload.model ?? message.payload.provider ?? 'AI Model',
-                    );
                     return;
                 case 'REQUEST_STARTED':
                     activateConversation(message.payload.conversationId, true);
@@ -215,6 +214,15 @@ export function ChatView() {
         return () => window.removeEventListener('message', handleMessage);
     }, []);
 
+    useEffect(() => {
+        const firstModel = models[0]?.name;
+        if (auth.status !== 'signedIn' || !preferencesLoaded || preferences.selectedModel || !firstModel) {
+            return;
+        }
+
+        saveModelPreference(firstModel);
+    }, [auth.status, models, preferences.selectedModel, preferencesLoaded]);
+
     function sendMessage(text: string) {
         vscode.postMessage({ type: 'SEND_MESSAGE', payload: { text } });
     }
@@ -226,6 +234,20 @@ export function ChatView() {
 
     function stopGeneration() {
         vscode.postMessage({ type: 'STOP_GENERATION' });
+    }
+
+    function saveModelPreference(selectedModel: string) {
+        if (!selectedModel) {
+            return;
+        }
+
+        vscode.postMessage({
+            type: 'SAVE_PREFERENCES',
+            payload: {
+                ...preferences,
+                selectedModel,
+            },
+        });
     }
 
     function logout() {
@@ -253,6 +275,7 @@ export function ChatView() {
     const chatDisabled = auth.status !== 'signedIn';
     const disabledReason = 'Sign in from settings';
     const statusText = signedIn ? `${auth.userId} · ${status}` : status;
+    const selectedModel = preferences.selectedModel || models[0]?.name || '';
 
     return (
         <div className="shell">
@@ -317,8 +340,10 @@ export function ChatView() {
             <ChatInput
                 disabled={chatDisabled}
                 disabledReason={disabledReason}
-                modelLabel={modelLabel}
+                models={models}
                 pending={pending}
+                selectedModel={selectedModel}
+                onModelChange={saveModelPreference}
                 onNewConversation={newConversation}
                 onSend={sendMessage}
                 onStop={stopGeneration}
@@ -506,7 +531,7 @@ function ModelSettingsForm({
     models: AvailableModel[];
     preferences: UserPreferencesState;
 }) {
-    const defaultModel = models.find((model) => model.default)?.name ?? models[0]?.name ?? '';
+    const defaultModel = models[0]?.name ?? '';
     const [selectedModel, setSelectedModel] = useState(preferences.selectedModel || defaultModel);
     const [temperature, setTemperature] = useState(String(preferences.temperature ?? 0.2));
     const [responseLanguage, setResponseLanguage] = useState(preferences.responseLanguage || 'Korean');

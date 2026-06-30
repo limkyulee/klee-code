@@ -1,25 +1,68 @@
-export interface ParsedSlashCommand {
+export type LocalSlashCommandName = 'clear';
+
+export interface LocalSlashCommandDefinition {
+    name: LocalSlashCommandName;
+    description: string;
+}
+
+export interface ParsedPromptSkillCommand {
     skillCommand?: { name: string };
     question: string;
 }
 
-const SLASH_SKILL_PATTERN = /^\/([a-zA-Z0-9_-]+)(?:\s+([\s\S]*))?$/;
-const CLEAR_COMMAND_PATTERN = /^\/clear(?:\s+.*)?$/i;
+export type ParsedSlashCommand =
+    | { type: 'local'; name: LocalSlashCommandName; args: string }
+    | { type: 'promptSkill'; skillCommand: { name: string }; question: string }
+    | { type: 'text'; question: string };
 
-export function parseSlashSkillCommand(text: string): ParsedSlashCommand {
+const SLASH_SKILL_PATTERN = /^\/([a-zA-Z0-9_-]+)(?:\s+([\s\S]*))?$/;
+
+export const LOCAL_SLASH_COMMANDS: readonly LocalSlashCommandDefinition[] = [
+    {
+        name: 'clear',
+        description: '현재 대화 내역과 context window를 초기화합니다.',
+    },
+];
+
+const localCommandNames = new Set<string>(LOCAL_SLASH_COMMANDS.map((command) => command.name));
+
+export function parseSlashCommand(text: string): ParsedSlashCommand {
     const trimmedText = text.trim();
     const match = SLASH_SKILL_PATTERN.exec(trimmedText);
 
     if (!match) {
-        return { question: trimmedText };
+        return { type: 'text', question: trimmedText };
+    }
+
+    const name = match[1].toLowerCase();
+    const args = match[2]?.trim() ?? '';
+
+    if (isLocalSlashCommandName(name)) {
+        return { type: 'local', name, args };
     }
 
     return {
-        skillCommand: { name: match[1].toLowerCase() },
-        question: match[2]?.trim() ?? '',
+        type: 'promptSkill',
+        skillCommand: { name },
+        question: args,
     };
 }
 
-export function isClearCommand(text: string): boolean {
-    return CLEAR_COMMAND_PATTERN.test(text.trim());
+export function parseSlashSkillCommand(text: string): ParsedPromptSkillCommand {
+    const command = parseSlashCommand(text);
+
+    if (command.type === 'promptSkill') {
+        return {
+            skillCommand: command.skillCommand,
+            question: command.question,
+        };
+    }
+
+    return {
+        question: command.type === 'text' ? command.question : command.args,
+    };
+}
+
+function isLocalSlashCommandName(name: string): name is LocalSlashCommandName {
+    return localCommandNames.has(name);
 }

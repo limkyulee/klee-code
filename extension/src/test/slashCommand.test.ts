@@ -1,31 +1,39 @@
 import * as assert from 'assert';
-import { isClearCommand, parseSlashSkillCommand } from '../extension-host/chat/slashCommand';
+import { LOCAL_SLASH_COMMANDS, parseSlashCommand } from '../extension-host/chat/slashCommand';
 
 suite('slash skill command', () => {
     test('parses the first slash token as a skill command', () => {
-        const parsed = parseSlashSkillCommand('/review explain this');
+        const parsed = parseSlashCommand('/review explain this');
 
+        if (parsed.type !== 'promptSkill') {
+            assert.fail(`Expected promptSkill, got ${parsed.type}`);
+        }
         assert.deepStrictEqual(parsed.skillCommand, { name: 'review' });
         assert.strictEqual(parsed.question, 'explain this');
     });
 
     test('keeps slash text in the middle as a normal question', () => {
-        const parsed = parseSlashSkillCommand('please /review this');
+        const parsed = parseSlashCommand('please /review this');
 
-        assert.strictEqual(parsed.skillCommand, undefined);
+        assert.strictEqual(parsed.type, 'text');
         assert.strictEqual(parsed.question, 'please /review this');
     });
 
     test('normalizes skill command names', () => {
-        const parsed = parseSlashSkillCommand('/Review-API run checks');
+        const parsed = parseSlashCommand('/Review-API run checks');
 
+        if (parsed.type !== 'promptSkill') {
+            assert.fail(`Expected promptSkill, got ${parsed.type}`);
+        }
         assert.deepStrictEqual(parsed.skillCommand, { name: 'review-api' });
         assert.strictEqual(parsed.question, 'run checks');
     });
 
-    test('detects clear as a local reset command', () => {
-        assert.strictEqual(isClearCommand('/clear'), true);
-        assert.strictEqual(isClearCommand('/CLEAR now'), true);
-        assert.strictEqual(isClearCommand('please /clear'), false);
+    test('detects clear from the local command registry', () => {
+        assert.ok(LOCAL_SLASH_COMMANDS.some((command) => command.name === 'clear'));
+
+        assert.deepStrictEqual(parseSlashCommand('/clear'), { type: 'local', name: 'clear', args: '' });
+        assert.deepStrictEqual(parseSlashCommand('/CLEAR now'), { type: 'local', name: 'clear', args: 'now' });
+        assert.deepStrictEqual(parseSlashCommand('please /clear'), { type: 'text', question: 'please /clear' });
     });
 });
