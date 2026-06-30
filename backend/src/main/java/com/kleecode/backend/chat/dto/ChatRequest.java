@@ -15,6 +15,8 @@ public record ChatRequest(
         String conversationId,
         String code,
         String question,
-        CodeContext context
+        CodeContext context,
+        SkillCommand skillCommand,
+        KleeContext kleeContext
 ) {
 }

@@ -18,6 +18,22 @@ export interface CodeContext {
     surroundingSnippet: string;
 }
 
+export interface SkillCommand {
+    name: string;
+}
+
+export interface KleePromptFile {
+    name: string;
+    path: string;
+    content: string;
+}
+
+export interface KleeContext {
+    rules: KleePromptFile[];
+    skills: KleePromptFile[];
+    hooks: KleePromptFile[];
+}
+
 /** POST /chat 요청 바디 */
 export interface ChatRequest {
     /** 연속 대화를 식별하는 UUID — extension 이 세션 시작 시 생성하고 보관 */
@@ -31,6 +47,12 @@ export interface ChatRequest {
 
     /** 코드 위치/언어/주변 컨텍스트 메타데이터 */
     context?: CodeContext;
+
+    /** Slash skill command parsed from the first token, for example /review */
+    skillCommand?: SkillCommand;
+
+    /** Project customization files loaded from .klee */
+    kleeContext?: KleeContext;
 }
 
 /** POST /chat 응답 바디 */

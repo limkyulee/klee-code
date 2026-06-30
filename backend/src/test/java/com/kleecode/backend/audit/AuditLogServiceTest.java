@@ -41,7 +41,9 @@ class AuditLogServiceTest {
                         new SelectionRange(1, 2, 2, 4),
                         "selected code",
                         "line-1\nline-2"
-                )
+                ),
+                null,
+                null
         );
 
         var saved = auditLogService.start("user-1", request, "ollama", false);
@@ -59,7 +61,7 @@ class AuditLogServiceTest {
     void markSucceededUpdatesSavedAuditLog() {
         when(auditLogRepository.save(any())).thenAnswer(invocation -> invocation.getArgument(0));
 
-        ChatRequest request = new ChatRequest("conversation-2", null, "Explain this", null);
+        ChatRequest request = new ChatRequest("conversation-2", null, "Explain this", null, null, null);
 
         var saved = auditLogService.start("user-2", request, "ollama", false);
         var updated = auditLogService.markSucceeded(saved, "answer");
@@ -76,7 +78,7 @@ class AuditLogServiceTest {
     void markFailedUpdatesSavedAuditLog() {
         when(auditLogRepository.save(any())).thenAnswer(invocation -> invocation.getArgument(0));
 
-        ChatRequest request = new ChatRequest("conversation-3", null, "Explain this", null);
+        ChatRequest request = new ChatRequest("conversation-3", null, "Explain this", null, null, null);
 
         var saved = auditLogService.start("user-3", request, "ollama", false);
         var updated = auditLogService.markFailed(saved, "boom");

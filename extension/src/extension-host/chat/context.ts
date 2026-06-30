@@ -55,6 +55,12 @@ export interface ChatRequestContext {
     code: string;
     question: string;
     context?: CodeContext;
+    skillCommand?: { name: string };
+    kleeContext?: {
+        rules: Array<{ name: string; path: string; content: string }>;
+        skills: Array<{ name: string; path: string; content: string }>;
+        hooks: Array<{ name: string; path: string; content: string }>;
+    };
 }
 
 const CONTEXT_RADIUS_LINES = 10;
@@ -63,6 +69,7 @@ export function buildChatRequest(
     editor: TextEditorLike | undefined,
     conversationId: string,
     question: string,
+    options: Pick<ChatRequestContext, 'skillCommand' | 'kleeContext'> = {},
 ): ChatRequestContext {
     const context = buildCodeContext(editor);
 
@@ -71,6 +78,8 @@ export function buildChatRequest(
         code: context?.selectedText ?? '',
         question,
         context,
+        skillCommand: options.skillCommand,
+        kleeContext: options.kleeContext,
     };
 }
 

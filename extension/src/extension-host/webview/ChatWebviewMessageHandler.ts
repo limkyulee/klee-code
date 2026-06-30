@@ -13,6 +13,8 @@ import {
 } from '../services/chatApiClient';
 import { getBackendUrl } from '../config/settings';
 import { buildChatRequest } from '../chat/context';
+import { readWorkspaceKleeContext } from '../chat/kleeContext';
+import { isClearCommand, parseSlashSkillCommand } from '../chat/slashCommand';
 import { AuthSession } from '../services/authSession';
 
 export type WebviewMessage =
@@ -106,10 +108,36 @@ export class ChatWebviewMessageHandler {
         });
     }
 
+    private async clearConversation(): Promise<void> {
+        const clearedConversationId = this.conversationId;
+        this.abortConversationWithoutNotification(clearedConversationId);
+        this.conversationSnapshots.delete(clearedConversationId);
+
+        try {
+            await this.withAuthorizedRetry((accessToken) => deleteConversation(clearedConversationId, { accessToken }));
+        } catch (err) {
+            if (!(err instanceof ApiError && err.status === 404)) {
+                await this.postMessage({ type: 'ERROR', payload: { message: toErrorMessage(err) } });
+            }
+        }
+
+        this.conversationId = randomUUID();
+        await this.postMessage({
+            type: 'CONVERSATION_RESET',
+            payload: { conversationId: this.conversationId, pending: false },
+        });
+        await this.postChatHistory();
+    }
+
     private async ask(question: string): Promise<void> {
         const trimmedQuestion = question.trim();
 
         if (!trimmedQuestion) {
+            return;
+        }
+
+        if (isClearCommand(trimmedQuestion)) {
+            await this.clearConversation();
             return;
         }
 
@@ -151,7 +179,12 @@ export class ChatWebviewMessageHandler {
 
         try {
             const editor = vscode.window.activeTextEditor;
-            const request = buildChatRequest(editor, targetConversationId, trimmedQuestion);
+            const parsedQuestion = parseSlashSkillCommand(trimmedQuestion);
+            const kleeContext = await readWorkspaceKleeContext(parsedQuestion.skillCommand?.name);
+            const request = buildChatRequest(editor, targetConversationId, parsedQuestion.question, {
+                skillCommand: parsedQuestion.skillCommand,
+                kleeContext,
+            });
             await this.withAuthorizedRetry((accessToken) =>
                 sendChatMessageStream(
                     request,

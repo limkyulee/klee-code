@@ -8,6 +8,7 @@ import com.kleecode.backend.conversation.service.ConversationService;
 import com.kleecode.backend.llm.dto.EffectiveLlmSettings;
 import com.kleecode.backend.llm.service.LLMGateway;
 import com.kleecode.backend.preference.service.UserPreferenceService;
+import com.kleecode.backend.prompt.service.PromptAssemblyService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.ai.chat.prompt.ChatOptions;
 import org.springframework.stereotype.Service;
@@ -45,6 +46,7 @@ public class ChatService {
     private final UserPreferenceService userPreferenceService;
     private final LLMGateway llmGateway;
     private final ChatModelExceptionMapper exceptionMapper;
+    private final PromptAssemblyService promptAssemblyService;
 
     public ChatStatus status(String userId) {
         EffectiveLlmSettings settings = userPreferenceService.effectiveSettings(userId);
@@ -71,7 +73,7 @@ public class ChatService {
         try {
             String answer = llmGateway.chatClient()
                     .prompt()
-                    .user(toUserMessage(request, settings))
+                    .user(promptAssemblyService.assemble(request, settings))
                     .options(ChatOptions.builder()
                             .model(settings.modelName())
                             .temperature(settings.temperature()))
@@ -105,7 +107,7 @@ public class ChatService {
 
         return llmGateway.chatClient()
                 .prompt()
-                .user(toUserMessage(request, settings))
+                .user(promptAssemblyService.assemble(request, settings))
                 .options(ChatOptions.builder()
                         .model(settings.modelName())
                         .temperature(settings.temperature()))
@@ -125,40 +127,6 @@ public class ChatService {
                                 .ifPresent(conversationService::recordTurnCompleted);
                     }
                 });
-    }
-
-    private String toUserMessage(ChatRequest request, EffectiveLlmSettings settings) {
-        /* 코드가 있으면 선택 코드와 주변 컨텍스트를 함께 전달한다.
-           코드가 없으면 질문만 그대로 전달한다. */
-        String languageInstruction = "Respond in " + settings.responseLanguage() + ".\n\n";
-        if (request.code() == null || request.code().isBlank()) {
-            return languageInstruction + request.question();
-        }
-
-        StringBuilder message = new StringBuilder(languageInstruction);
-        if (request.context() != null) {
-            if (request.context().filePath() != null && !request.context().filePath().isBlank()) {
-                message.append("File: ").append(request.context().filePath()).append('\n');
-            }
-            if (request.context().languageId() != null && !request.context().languageId().isBlank()) {
-                message.append("Language: ").append(request.context().languageId()).append('\n');
-            }
-        }
-
-        message.append("Selected code:\n```\n")
-                .append(request.code())
-                .append("\n```\n");
-
-        if (request.context() != null
-                && request.context().surroundingSnippet() != null
-                && !request.context().surroundingSnippet().isBlank()) {
-            message.append("\nSurrounding context:\n```\n")
-                    .append(request.context().surroundingSnippet())
-                    .append("\n```\n");
-        }
-
-        message.append("\nQuestion: ").append(request.question());
-        return message.toString();
     }
 
 }
