@@ -181,6 +181,9 @@ if [ -z "$BACKEND_JAR" ]; then
   exit 1
 fi
 
+export KLEE_LLM_BASE_URL="${KLEE_LLM_BASE_URL:-http://localhost:11434}"
+echo "Using Ollama base URL: $KLEE_LLM_BASE_URL"
+
 nohup java -jar "$BACKEND_JAR" > "$BACKEND_LOG" 2>&1 &
 BACKEND_PID=$!
 echo "$BACKEND_PID" > "$BACKEND_PID_FILE"

@@ -8,7 +8,7 @@ klee:
   llm:
     provider: ollama
     base-url: ${KLEE_LLM_BASE_URL:http://ollama:11434}
-    default-model: ${KLEE_LLM_DEFAULT_MODEL:qwen2.5-coder:14b}
+    default-model: ${KLEE_LLM_DEFAULT_MODEL:qwen2.5-coder:7b}
     default-temperature: ${KLEE_LLM_DEFAULT_TEMPERATURE:0.2}
     default-response-language: ${KLEE_LLM_DEFAULT_RESPONSE_LANGUAGE:Korean}
 klee-code:

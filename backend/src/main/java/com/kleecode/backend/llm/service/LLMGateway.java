@@ -110,6 +110,7 @@ public class LLMGateway {
                     .filter(model -> model.name() != null && !model.name().isBlank())
                     .toList();
         } catch (RestClientException ex) {
+            log.warn("Failed to retrieve models from Ollama API at {}", properties.getBaseUrl(), ex);
             throw new ApiException(
                     HttpStatus.SERVICE_UNAVAILABLE,
                     "MODEL_SERVER_UNAVAILABLE",
