@@ -9,12 +9,15 @@ import {
     getModels,
     getPreferences,
     savePreferences,
-    sendChatMessageStream,
+    postToolResult,
+    sendAgentMessageStream,
 } from '../services/chatApiClient';
 import { getBackendUrl } from '../config/settings';
 import { buildChatRequest } from '../chat/context';
 import { readWorkspaceKleeContext } from '../chat/kleeContext';
+import { executeLocalTool } from '../chat/localTools';
 import { parseSlashCommand, type LocalSlashCommandName } from '../chat/slashCommand';
+import type { PermissionMode } from '../chat/types';
 import { AuthSession } from '../services/authSession';
 
 export type WebviewMessage =
@@ -26,7 +29,7 @@ export type WebviewMessage =
     | { type: 'REQUEST_CHAT_HISTORY' }
     | { type: 'SELECT_CONVERSATION'; payload: { conversationId: string } }
     | { type: 'DELETE_CONVERSATION'; payload: { conversationId: string } }
-    | { type: 'SEND_MESSAGE'; payload: { text: string } }
+    | { type: 'SEND_MESSAGE'; payload: { text: string; permissionMode?: PermissionMode } }
     | { type: 'STOP_GENERATION' }
     | { type: 'NEW_CONVERSATION' };
 
@@ -88,7 +91,7 @@ export class ChatWebviewMessageHandler {
                 await this.resetConversation();
                 return;
             case 'SEND_MESSAGE':
-                await this.ask(message.payload.text);
+                await this.ask(message.payload.text, message.payload.permissionMode ?? 'ask');
                 return;
             case 'STOP_GENERATION':
                 this.stopActiveRequest();
@@ -97,7 +100,7 @@ export class ChatWebviewMessageHandler {
     }
 
     async askExternal(question: string): Promise<void> {
-        await this.ask(question);
+        await this.ask(question, 'ask');
     }
 
     async resetConversation(): Promise<void> {
@@ -137,7 +140,7 @@ export class ChatWebviewMessageHandler {
         }
     }
 
-    private async ask(question: string): Promise<void> {
+    private async ask(question: string, permissionMode: PermissionMode): Promise<void> {
         const trimmedQuestion = question.trim();
 
         if (!trimmedQuestion) {
@@ -195,8 +198,8 @@ export class ChatWebviewMessageHandler {
                 kleeContext,
             });
             await this.withAuthorizedRetry((accessToken) =>
-                sendChatMessageStream(
-                    request,
+                sendAgentMessageStream(
+                    { ...request, permissionMode },
                     {
                         onProgressDelta: async (text) => {
                             void this.postMessage({
@@ -219,6 +222,21 @@ export class ChatWebviewMessageHandler {
                                 },
                             });
                             this.appendSnapshotText(targetConversationId, assistantMessageId, text);
+                        },
+                        onToolCallRequested: async (toolCall) => {
+                            const result = await executeLocalTool(toolCall);
+                            await postToolResult(result, { accessToken });
+                            const statusText = result.status === 'SUCCEEDED' ? 'completed' : 'failed';
+                            const progress = `Local tool ${statusText}: ${toolCall.toolName}`;
+                            void this.postMessage({
+                                type: 'PROGRESS_DELTA',
+                                payload: {
+                                    messageId: assistantMessageId,
+                                    conversationId: targetConversationId,
+                                    text: progress,
+                                },
+                            });
+                            this.appendSnapshotProgress(targetConversationId, assistantMessageId, progress);
                         },
                         onDone: async () => {
                             this.finishSnapshotMessage(targetConversationId, assistantMessageId, 'SUCCEEDED');

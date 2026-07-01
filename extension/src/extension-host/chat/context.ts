@@ -61,6 +61,7 @@ export interface ChatRequestContext {
         skills: Array<{ name: string; path: string; content: string }>;
         hooks: Array<{ name: string; path: string; content: string }>;
     };
+    permissionMode?: 'ask' | 'approve' | 'full';
 }
 
 const CONTEXT_RADIUS_LINES = 10;

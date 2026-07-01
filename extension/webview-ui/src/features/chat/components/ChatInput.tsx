@@ -1,5 +1,5 @@
 import { FormEvent, KeyboardEvent, useEffect, useMemo, useRef, useState } from 'react';
-import type { AvailableModel } from '../api/webviewProtocol';
+import type { AvailableModel, PermissionMode } from '../api/webviewProtocol';
 
 interface ChatInputProps {
     models: AvailableModel[];
@@ -9,7 +9,7 @@ interface ChatInputProps {
     disabledReason?: string;
     onModelChange(modelName: string): void;
     onNewConversation(): void;
-    onSend(text: string): void;
+    onSend(text: string, permissionMode: PermissionMode): void;
     onStop(): void;
 }
 
@@ -44,7 +44,7 @@ export function ChatInput({
 }: ChatInputProps) {
     const [text, setText] = useState('');
     const [modeOpen, setModeOpen] = useState(false);
-    const [selectedModeId, setSelectedModeId] = useState<(typeof approvalModes)[number]['id']>('ask');
+    const [selectedModeId, setSelectedModeId] = useState<PermissionMode>('ask');
     const menuRef = useRef<HTMLDivElement>(null);
     const selectedMode = approvalModes.find((mode) => mode.id === selectedModeId) ?? approvalModes[0];
     const selectedModelLabel = useMemo(
@@ -83,7 +83,7 @@ export function ChatInput({
             return;
         }
 
-        onSend(trimmedText);
+        onSend(trimmedText, selectedModeId);
         setText('');
     }
 

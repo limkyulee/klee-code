@@ -9,6 +9,8 @@ import {
     API_AUTH_ME,
     API_AUTH_REFRESH,
     API_AUTH_REGISTER,
+    API_AGENT_STREAM,
+    API_AGENT_TOOL_RESULTS,
     API_CHAT,
     API_CHAT_STATUS,
     API_CHAT_STREAM,
@@ -18,12 +20,15 @@ import {
 } from '../constants';
 import type {
     AvailableModel,
+    AgentRequest,
     AuthResponse,
     ChatHistoryItem,
     ChatRequest,
     ChatResponse,
     ChatStatus,
     ConversationDetail,
+    ToolCallRequest,
+    ToolResultRequest,
     UserPreferences,
     UserProfile,
 } from '../chat/types';
@@ -60,6 +65,7 @@ export async function sendChatMessage(request: ChatRequest, auth?: RequestAuth):
 export interface ChatStreamHandlers {
     onProgressDelta?(text: string): void | Promise<void>;
     onAnswerDelta?(text: string): void | Promise<void>;
+    onToolCallRequested?(toolCall: ToolCallRequest): void | Promise<void>;
     onDone?(): void | Promise<void>;
 }
 
@@ -118,6 +124,38 @@ export async function sendChatMessageStream(
 
     await ensureOk(response);
 
+    await readEventStream(response, handlers);
+}
+
+export async function sendAgentMessageStream(
+    request: AgentRequest,
+    handlers: ChatStreamHandlers,
+    auth?: RequestAuth,
+    signal?: AbortSignal,
+): Promise<void> {
+    const url = `${getBackendUrl()}${API_AGENT_STREAM}`;
+
+    const response = await fetch(url, {
+        method: 'POST',
+        headers: { ...jsonHeaders(auth), Accept: 'text/event-stream' },
+        body: JSON.stringify(request),
+        signal,
+    });
+
+    await ensureOk(response);
+    await readEventStream(response, handlers);
+}
+
+export async function postToolResult(result: ToolResultRequest, auth?: RequestAuth): Promise<void> {
+    const response = await fetch(`${getBackendUrl()}${API_AGENT_TOOL_RESULTS}`, {
+        method: 'POST',
+        headers: jsonHeaders(auth),
+        body: JSON.stringify(result),
+    });
+    await ensureOk(response);
+}
+
+async function readEventStream(response: Response, handlers: ChatStreamHandlers): Promise<void> {
     if (!response.body) {
         throw new Error('Streaming response body is unavailable');
     }
@@ -138,14 +176,14 @@ export async function sendChatMessageStream(
         buffer = events.pop() ?? '';
 
         for (const event of events) {
-            handleServerSentEvent(event, handlers);
+            await handleServerSentEvent(event, handlers);
         }
     }
 
     buffer += decoder.decode();
 
     if (buffer.length > 0) {
-        handleServerSentEvent(buffer, handlers);
+        await handleServerSentEvent(buffer, handlers);
     }
 }
 
@@ -201,7 +239,7 @@ export async function savePreferences(
     return response.json() as Promise<UserPreferences>;
 }
 
-function handleServerSentEvent(eventText: string, handlers: ChatStreamHandlers): void {
+async function handleServerSentEvent(eventText: string, handlers: ChatStreamHandlers): Promise<void> {
     let eventName = 'message';
     const dataLines: string[] = [];
 
@@ -216,11 +254,13 @@ function handleServerSentEvent(eventText: string, handlers: ChatStreamHandlers):
     const data = dataLines.join('\n');
 
     if (eventName === 'progress') {
-        void handlers.onProgressDelta?.(parseStreamData(data));
+        await handlers.onProgressDelta?.(parseStreamData(data));
     } else if (eventName === 'token') {
-        void handlers.onAnswerDelta?.(parseStreamData(data));
+        await handlers.onAnswerDelta?.(parseStreamData(data));
+    } else if (eventName === 'tool_call_requested') {
+        await handlers.onToolCallRequested?.(parseJsonStreamData<ToolCallRequest>(data));
     } else if (eventName === 'done') {
-        void handlers.onDone?.();
+        await handlers.onDone?.();
     } else if (eventName === 'error') {
         throw new Error(parseStreamData(data));
     }
@@ -232,6 +272,10 @@ function parseStreamData(data: string): string {
     } catch {
         return data;
     }
+}
+
+function parseJsonStreamData<T>(data: string): T {
+    return JSON.parse(data) as T;
 }
 
 function readEventFieldValue(line: string, fieldName: string): string {

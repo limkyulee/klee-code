@@ -5,6 +5,7 @@ import type {
     ChatHistoryItem,
     ConversationMessage,
     ExtensionToWebviewMessage,
+    PermissionMode,
     UserPreferencesState,
 } from './api/webviewProtocol';
 import { ChatInput } from './components/ChatInput';
@@ -223,8 +224,8 @@ export function ChatView() {
         saveModelPreference(firstModel);
     }, [auth.status, models, preferences.selectedModel, preferencesLoaded]);
 
-    function sendMessage(text: string) {
-        vscode.postMessage({ type: 'SEND_MESSAGE', payload: { text } });
+    function sendMessage(text: string, permissionMode: PermissionMode) {
+        vscode.postMessage({ type: 'SEND_MESSAGE', payload: { text, permissionMode } });
     }
 
     function newConversation() {

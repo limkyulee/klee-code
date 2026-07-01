@@ -34,6 +34,8 @@ export interface KleeContext {
     hooks: KleePromptFile[];
 }
 
+export type PermissionMode = 'ask' | 'approve' | 'full';
+
 /** POST /chat 요청 바디 */
 export interface ChatRequest {
     /** 연속 대화를 식별하는 UUID — extension 이 세션 시작 시 생성하고 보관 */
@@ -53,6 +55,25 @@ export interface ChatRequest {
 
     /** Project customization files loaded from .klee */
     kleeContext?: KleeContext;
+}
+
+export interface AgentRequest extends ChatRequest {
+    permissionMode: PermissionMode;
+}
+
+export interface ToolCallRequest {
+    runId: string;
+    toolCallId: string;
+    toolName: string;
+    arguments: Record<string, unknown>;
+}
+
+export interface ToolResultRequest {
+    runId: string;
+    toolCallId: string;
+    status: 'SUCCEEDED' | 'FAILED';
+    result?: string;
+    errorMessage?: string;
 }
 
 /** POST /chat 응답 바디 */

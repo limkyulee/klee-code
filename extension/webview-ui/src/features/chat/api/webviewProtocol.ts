@@ -1,6 +1,9 @@
 export interface SendMessagePayload {
     text: string;
+    permissionMode?: PermissionMode;
 }
+
+export type PermissionMode = 'ask' | 'approve' | 'full';
 
 export type WebviewToExtensionMessage =
     | { type: 'WEBVIEW_READY' }
