@@ -12,7 +12,7 @@ For every user request handled in this repository, maintain a Markdown history f
 
 ### File Location and Naming
 
-- Store history files in `./program-history/`.
+- Store history files in `./docs/program-history/`.
 - Use the next numeric index in the filename.
 - Filename format:
 
