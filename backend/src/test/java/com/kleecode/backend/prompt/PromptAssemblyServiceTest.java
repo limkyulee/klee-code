@@ -79,6 +79,23 @@ class PromptAssemblyServiceTest {
         assertTrue(prompt.contains("Plain question"));
     }
 
+    @Test
+    void includesProjectRulesAndHooksWithoutSlashCommand() {
+        KleeContext context = new KleeContext(
+                List.of(new KleePromptFile("project", ".klee/rules/project.md", "Always follow the project rule.")),
+                List.of(new KleePromptFile("foo", ".klee/skills/foo.md", "Use the foo workflow.")),
+                List.of(new KleePromptFile("before_chat", ".klee/hooks/before_chat.md", "Remember the project hook."))
+        );
+
+        String prompt = service.assemble(request("Plain question", null, context), settings);
+
+        assertTrue(prompt.contains("## Project Rules (.klee/rules/project.md)"));
+        assertTrue(prompt.contains("Always follow the project rule."));
+        assertTrue(!prompt.contains("Use the foo workflow."));
+        assertTrue(prompt.contains("## Project Hooks (.klee/hooks/before_chat.md)"));
+        assertTrue(prompt.contains("Remember the project hook."));
+    }
+
     private ChatRequest request(String question, SkillCommand command, KleeContext context) {
         return new ChatRequest("conversation-1", null, question, null, command, context);
     }

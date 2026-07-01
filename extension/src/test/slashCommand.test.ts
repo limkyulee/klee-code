@@ -29,11 +29,15 @@ suite('slash skill command', () => {
         assert.strictEqual(parsed.question, 'run checks');
     });
 
-    test('detects clear from the local command registry', () => {
+    test('detects local commands from the local command registry', () => {
         assert.ok(LOCAL_SLASH_COMMANDS.some((command) => command.name === 'clear'));
+        assert.ok(LOCAL_SLASH_COMMANDS.some((command) => command.name === 'help'));
+        assert.ok(LOCAL_SLASH_COMMANDS.some((command) => command.name === 'status'));
 
         assert.deepStrictEqual(parseSlashCommand('/clear'), { type: 'local', name: 'clear', args: '' });
         assert.deepStrictEqual(parseSlashCommand('/CLEAR now'), { type: 'local', name: 'clear', args: 'now' });
         assert.deepStrictEqual(parseSlashCommand('please /clear'), { type: 'text', question: 'please /clear' });
+        assert.deepStrictEqual(parseSlashCommand('/help'), { type: 'local', name: 'help', args: '' });
+        assert.deepStrictEqual(parseSlashCommand('/status'), { type: 'local', name: 'status', args: '' });
     });
 });

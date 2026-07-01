@@ -38,4 +38,28 @@ suite('klee context', () => {
 
         assert.strictEqual(context, undefined);
     });
+
+    test('includes project rules without a slash command', () => {
+        const context = buildKleeContextFromFiles([
+            { directory: 'rules', name: 'project', path: '.klee/rules/project.md', content: 'Rule text' },
+            { directory: 'skills', name: 'foo', path: '.klee/skills/foo.md', content: 'Foo skill' },
+        ]);
+
+        assert.ok(context);
+        assert.strictEqual(context.rules.length, 1);
+        assert.strictEqual(context.rules[0].name, 'project');
+        assert.strictEqual(context.skills.length, 0);
+    });
+
+    test('sorts .klee files by path before sending them to the backend', () => {
+        const context = buildKleeContextFromFiles(
+            [
+                { directory: 'rules', name: 'z', path: '.klee/rules/z.md', content: 'Z rule' },
+                { directory: 'rules', name: 'a', path: '.klee/rules/a.md', content: 'A rule' },
+            ],
+        );
+
+        assert.ok(context);
+        assert.deepStrictEqual(context.rules.map((rule) => rule.path), ['.klee/rules/a.md', '.klee/rules/z.md']);
+    });
 });

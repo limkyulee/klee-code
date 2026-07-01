@@ -13,12 +13,19 @@ interface RawKleeFile {
 export function buildKleeContextFromFiles(files: RawKleeFile[], skillName?: string): KleeContext | undefined {
     const normalizedSkillName = normalizeName(skillName);
     const context: KleeContext = {
-        rules: files.filter((file) => file.directory === 'rules').map(toPromptFile),
+        rules: files
+            .filter((file) => file.directory === 'rules')
+            .sort(compareKleeFiles)
+            .map(toPromptFile),
         skills: files
             .filter((file) => file.directory === 'skills')
             .filter((file) => normalizedSkillName !== undefined && normalizeName(file.name) === normalizedSkillName)
+            .sort(compareKleeFiles)
             .map(toPromptFile),
-        hooks: files.filter((file) => file.directory === 'hooks').map(toPromptFile),
+        hooks: files
+            .filter((file) => file.directory === 'hooks')
+            .sort(compareKleeFiles)
+            .map(toPromptFile),
     };
 
     if (context.rules.length === 0 && context.skills.length === 0 && context.hooks.length === 0) {
@@ -89,6 +96,10 @@ function toPromptFile(file: RawKleeFile): KleePromptFile {
         path: file.path,
         content: file.content,
     };
+}
+
+function compareKleeFiles(left: RawKleeFile, right: RawKleeFile): number {
+    return left.path.localeCompare(right.path);
 }
 
 function normalizeName(name: string | undefined): string | undefined {

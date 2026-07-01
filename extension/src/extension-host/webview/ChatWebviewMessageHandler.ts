@@ -16,7 +16,7 @@ import { getBackendUrl } from '../config/settings';
 import { buildChatRequest } from '../chat/context';
 import { readWorkspaceKleeContext } from '../chat/kleeContext';
 import { executeLocalTool } from '../chat/localTools';
-import { parseSlashCommand, type LocalSlashCommandName } from '../chat/slashCommand';
+import { LOCAL_SLASH_COMMANDS, parseSlashCommand, type LocalSlashCommandName } from '../chat/slashCommand';
 import type { PermissionMode } from '../chat/types';
 import { AuthSession } from '../services/authSession';
 
@@ -136,6 +136,12 @@ export class ChatWebviewMessageHandler {
         switch (commandName) {
             case 'clear':
                 await this.clearConversation();
+                return;
+            case 'help':
+                await this.postLocalCommandResponse('/help', this.localHelpText());
+                return;
+            case 'status':
+                await this.postLocalCommandResponse('/status', await this.localStatusText());
                 return;
         }
     }
@@ -303,6 +309,67 @@ export class ChatWebviewMessageHandler {
                 type: 'STATUS',
                 payload: { backendUrl: getBackendUrl() },
             });
+        }
+    }
+
+    private async postLocalCommandResponse(commandText: string, responseText: string): Promise<void> {
+        const targetConversationId = this.conversationId;
+        const userMessage = this.appendSnapshotMessage(targetConversationId, {
+            id: randomUUID(),
+            role: 'user',
+            text: commandText,
+            createdAt: new Date().toISOString(),
+            status: 'SUCCEEDED',
+        });
+        const assistantMessage = this.appendSnapshotMessage(targetConversationId, {
+            id: randomUUID(),
+            role: 'assistant',
+            text: responseText,
+            createdAt: new Date().toISOString(),
+            status: 'SUCCEEDED',
+        });
+
+        await this.postMessage({
+            type: 'USER_MESSAGE',
+            payload: { conversationId: targetConversationId, message: userMessage },
+        });
+        await this.postMessage({
+            type: 'USER_MESSAGE',
+            payload: { conversationId: targetConversationId, message: assistantMessage },
+        });
+    }
+
+    private localHelpText(): string {
+        const commands = LOCAL_SLASH_COMMANDS
+            .map((command) => `/${command.name}: ${command.description}`)
+            .join('\n');
+        return [
+            '사용 가능한 내부 slash command:',
+            commands,
+            '',
+            '.klee 커스터마이징:',
+            '- .klee/rules/*.md: 모든 요청에 project rule로 포함됩니다.',
+            '- .klee/skills/{name}.md: /{name} 명령을 사용할 때 custom skill로 포함됩니다.',
+            '- .klee/hooks/*.md: 모든 요청에 project hook으로 포함됩니다.',
+        ].join('\n');
+    }
+
+    private async localStatusText(): Promise<string> {
+        try {
+            const status = await this.withAuthorizedRetry((accessToken) => getChatStatus({ accessToken }));
+            return [
+                'Klee Code 상태:',
+                `- Backend URL: ${getBackendUrl()}`,
+                `- Provider: ${status.provider ?? 'unknown'}`,
+                `- Model: ${status.model ?? 'unknown'}`,
+                `- Configured: ${status.configured ? 'yes' : 'no'}`,
+            ].join('\n');
+        } catch (err) {
+            return [
+                'Klee Code 상태:',
+                `- Backend URL: ${getBackendUrl()}`,
+                `- Backend detail: ${toErrorMessage(err)}`,
+            ].join('\n');
         }
     }
 

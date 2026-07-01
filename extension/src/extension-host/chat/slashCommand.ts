@@ -1,4 +1,4 @@
-export type LocalSlashCommandName = 'clear';
+export type LocalSlashCommandName = 'clear' | 'help' | 'status';
 
 export interface LocalSlashCommandDefinition {
     name: LocalSlashCommandName;
@@ -21,6 +21,14 @@ export const LOCAL_SLASH_COMMANDS: readonly LocalSlashCommandDefinition[] = [
     {
         name: 'clear',
         description: '현재 대화 내역과 context window를 초기화합니다.',
+    },
+    {
+        name: 'help',
+        description: '사용 가능한 slash command와 .klee 커스터마이징 규칙을 표시합니다.',
+    },
+    {
+        name: 'status',
+        description: '현재 백엔드 연결과 모델 설정 상태를 표시합니다.',
     },
 ];
 
