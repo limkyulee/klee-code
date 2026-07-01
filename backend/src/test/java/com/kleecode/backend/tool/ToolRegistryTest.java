@@ -1,10 +1,14 @@
 package com.kleecode.backend.tool;
 
 import com.kleecode.backend.permission.dto.PermissionMode;
+import com.kleecode.backend.tool.dto.ToolSchema;
 import com.kleecode.backend.tool.service.ToolPolicyService;
 import com.kleecode.backend.tool.service.ToolPromptService;
 import com.kleecode.backend.tool.service.ToolRegistry;
 import org.junit.jupiter.api.Test;
+
+import java.util.List;
+import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -28,8 +32,28 @@ class ToolRegistryTest {
 
         assertTrue(policyService.isKnownTool("read_file"));
         assertTrue(policyService.canRunWithoutApproval("search_files", PermissionMode.ASK));
+        assertTrue(policyService.canRunWithoutApproval("search_files", PermissionMode.APPROVE));
+        assertTrue(policyService.canRunWithoutApproval("search_files", PermissionMode.FULL));
         assertFalse(policyService.isKnownTool("write_file"));
         assertFalse(policyService.canRunWithoutApproval("write_file", PermissionMode.FULL));
+    }
+
+    @Test
+    void policyAllowsFutureWriteToolsOnlyInFullMode() {
+        ToolRegistry registryWithWriteTool = new ToolRegistry() {
+            @Override
+            public Optional<ToolSchema> findByName(String toolName) {
+                if (!toolName.equals("write_file")) {
+                    return Optional.empty();
+                }
+                return Optional.of(new ToolSchema("write_file", "Write a file.", List.of(), false));
+            }
+        };
+        ToolPolicyService policyService = new ToolPolicyService(registryWithWriteTool);
+
+        assertFalse(policyService.canRunWithoutApproval("write_file", PermissionMode.ASK));
+        assertFalse(policyService.canRunWithoutApproval("write_file", PermissionMode.APPROVE));
+        assertTrue(policyService.canRunWithoutApproval("write_file", PermissionMode.FULL));
     }
 
     @Test

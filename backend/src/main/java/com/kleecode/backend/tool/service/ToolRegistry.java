@@ -7,6 +7,10 @@ import org.springframework.stereotype.Service;
 import java.util.List;
 import java.util.Optional;
 
+/**
+ * @description Tool을 관리하는 서비스
+ * ToolRegistry
+ */
 @Service
 public class ToolRegistry {
 

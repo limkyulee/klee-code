@@ -20,15 +20,13 @@ import java.util.Optional;
 import java.util.concurrent.atomic.AtomicReference;
 
 /**
- * 채팅 비즈니스 로직.
- *
- * <p>ChatClient(Spring AI 추상화) 를 통해 LLM 을 호출한다.
- * 호출 전 MessageChatMemoryAdvisor 가 conversationId 에 해당하는
- * 과거 대화를 MongoDB 에서 읽어 프롬프트에 주입하고,
- * 호출 후 새 턴(질문 + 응답)을 다시 MongoDB 에 저장한다.
- *
- * <p>모델 서버는 중앙 LLM Gateway 설정으로만 결정된다. 사용자는 운영자가 허용한
- * 모델 중 하나와 응답 성향만 선택할 수 있으며, 서버 URL은 저장하거나 입력하지 않는다.
+ * @description Chat 요청을 처리하는 서비스
+ * - 사용자의 Chat 요청을 받아 LLM과 통신하여 응답을 반환합니다.
+ * - Audit Log를 기록하여 요청과 응답의 상태를 추적합니다.
+ * - ConversationService를 통해 사용자의 대화 기록을 관리합니다.
+ * - UserPreferenceService를 통해 사용자의 LLM 설정 선호도를 적용합니다.
+ * - PromptAssemblyService를 통해 최종 프롬프트를 조립합니다.
+ * ChatService
  */
 @Slf4j
 @Service

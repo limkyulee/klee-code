@@ -24,6 +24,18 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
     private final TokenService tokenService;
 
+    /**
+     * JWT 인증 필터
+     * - 요청 헤더에서 JWT 토큰을 추출하고, 유효성을 검사합니다.
+     * - 토큰이 유효하면 SecurityContext에 인증 정보를 설정합니다.
+     * - 토큰이 없거나 유효하지 않으면 SecurityContext를 초기화합니다.
+     * - 이 필터는 요청당 한 번만 실행됩니다.
+     * @param request HTTP 요청
+     * @param response HTTP 응답
+     * @param filterChain 필터 체인
+     * @throws ServletException 서블릿 예외
+     * @throws IOException 입출력 예외
+     */
     @Override
     protected void doFilterInternal(
             HttpServletRequest request,

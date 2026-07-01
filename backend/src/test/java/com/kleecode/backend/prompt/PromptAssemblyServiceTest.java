@@ -29,7 +29,7 @@ class PromptAssemblyServiceTest {
         String prompt = service.assemble(request, settings);
 
         assertTrue(prompt.contains("## Internal Skill /review"));
-        assertTrue(prompt.contains("Lead with findings"));
+        assertTrue(prompt.contains("요약보다 발견한 문제와 근거를 먼저 제시하세요."));
         assertTrue(prompt.contains("## User Question"));
         assertTrue(prompt.contains("Review this"));
     }

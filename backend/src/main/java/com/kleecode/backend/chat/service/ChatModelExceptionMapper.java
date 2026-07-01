@@ -7,6 +7,12 @@ import org.springframework.web.reactive.function.client.WebClientRequestExceptio
 
 import java.net.ConnectException;
 
+/**
+ * @description LLM 모델 요청 중 발생한 예외를 매핑하는 서비스
+ * - LLM 모델 요청 중 발생한 예외를 적절한 ApiException으로 변환합니다.
+ * - 연결 실패, 모델 서버 미사용 등 다양한 예외 상황을 처리합니다.
+ * ChatModelExceptionMapper
+ */
 @Component
 public class ChatModelExceptionMapper {
 

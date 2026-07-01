@@ -5,11 +5,10 @@ import org.springframework.web.servlet.config.annotation.CorsRegistry;
 import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
 
 /**
- * Spring MVC 전역 설정.
- *
- * <p>VS Code 확장(Node.js)은 브라우저가 아니라 CORS 제약이 없지만,
- * 추후 WebView나 외부 클라이언트 연동을 위해 전역 CORS를 허용해 둔다.
- * 실제 프로덕션에서는 allowedOrigins 를 사내 도메인으로 제한해야 한다.
+ * @description 웹 애플리케이션의 CORS 설정을 관리하는 구성 클래스
+ * - 모든 엔드포인트에 대해 CORS를 허용하여 개발 편의성을 제공합니다.
+ * - 실제 운영 환경에서는 보안상의 이유로 CORS 정책을 제한하는 것이 권장됩니다.
+ * WebConfig
  */
 @Configuration
 public class WebConfig implements WebMvcConfigurer {

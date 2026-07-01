@@ -5,38 +5,14 @@ import type { ToolCallRequest } from './types';
 const MAX_READ_BYTES = 200_000;
 const MAX_SEARCH_RESULTS = 80;
 
-export interface LocalToolArgumentSchema {
-    type: 'string';
-    required: boolean;
-}
-
 export interface LocalToolDefinition {
-    name: string;
-    description: string;
-    arguments: Record<string, LocalToolArgumentSchema>;
     execute(toolCall: ToolCallRequest): Promise<string>;
 }
 
-const localToolDefinitions: LocalToolDefinition[] = [
-    {
-        name: 'read_file',
-        description: 'Read a UTF-8 text file inside the active VS Code workspace.',
-        arguments: {
-            path: { type: 'string', required: true },
-        },
-        execute: (toolCall) => readFileTool(readStringArg(toolCall, 'path')),
-    },
-    {
-        name: 'search_files',
-        description: 'Search active workspace file paths by a short query.',
-        arguments: {
-            query: { type: 'string', required: true },
-        },
-        execute: (toolCall) => searchFilesTool(readStringArg(toolCall, 'query')),
-    },
-];
-
-const localToolRegistry = new Map(localToolDefinitions.map((tool) => [tool.name, tool]));
+const localToolRegistry = new Map<string, LocalToolDefinition>([
+    ['read_file', { execute: (toolCall) => readFileTool(readStringArg(toolCall, 'path')) }],
+    ['search_files', { execute: (toolCall) => searchFilesTool(readStringArg(toolCall, 'query')) }],
+]);
 
 export function getLocalTool(toolName: string): LocalToolDefinition | undefined {
     return localToolRegistry.get(toolName);

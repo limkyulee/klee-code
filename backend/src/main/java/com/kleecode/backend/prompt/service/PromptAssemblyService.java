@@ -16,6 +16,14 @@ import java.util.Comparator;
 import java.util.List;
 import java.util.Locale;
 
+/**
+ * @description Prompt를 조립하는 서비스
+ * - 시스템 프롬프트, 내부 스킬, 사용자 정의 스킬 등을 조합하여 최종 프롬프트를 생성합니다.
+ * - LLM을 다루는 심장부
+ * - 시스템 프롬프트 -> 내부 스킬 -> 사용자 정의 스킬 -> 프로젝트 규칙 -> 프로젝트 훅 -> 응답 언어 -> 코드 컨텍스트 -> 사용자 질문 순으로 조립됩니다.
+ * - 조립 책임을 PromptAssemblyService에 두어, ToolExecutorService와 ToolPromptService가 프롬프트 조립에 관여하지 않도록 한다.
+ * PromptAssemblyService
+ */
 @Service
 public class PromptAssemblyService {
 
@@ -28,6 +36,12 @@ public class PromptAssemblyService {
         this.resourceLoader = resourceLoader;
     }
 
+    /**
+     * 조립된 프롬프트를 생성합니다.
+     * @param request Chat 요청 객체
+     * @param settings LLM 설정 객체
+     * @return 조립된 프롬프트 문자열
+     */
     public String assemble(ChatRequest request, EffectiveLlmSettings settings) {
         String skillName = normalizeSkillName(request.skillCommand() == null ? null : request.skillCommand().name());
         String internalSkill = skillName == null ? null : loadInternalSkill(skillName);
@@ -55,6 +69,11 @@ public class PromptAssemblyService {
         return prompt.toString();
     }
 
+    /**
+     * 코드 컨텍스트를 프롬프트에 추가합니다.
+     * @param prompt 프롬프트 문자열 빌더
+     * @param request Chat 요청 객체
+     */
     private void appendCodeContext(StringBuilder prompt, ChatRequest request) {
         if (request.code() == null || request.code().isBlank()) {
             return;
@@ -85,6 +104,12 @@ public class PromptAssemblyService {
         appendSection(prompt, "Code Context", codeContext.toString());
     }
 
+    /**
+     * 사용자 정의 스킬을 찾습니다.
+     * @param request Chat 요청 객체
+     * @param skillName 스킬 이름
+     * @return 사용자 정의 스킬 파일 또는 null
+     */
     private KleePromptFile findCustomSkill(ChatRequest request, String skillName) {
         if (request.kleeContext() == null || request.kleeContext().skills() == null) {
             return null;
@@ -95,6 +120,12 @@ public class PromptAssemblyService {
                 .orElse(null);
     }
 
+    /**
+     * 여러 개의 파일을 프롬프트에 추가합니다.
+     * @param prompt 프롬프트 문자열 빌더
+     * @param title 섹션 제목
+     * @param files 파일 목록
+     */
     private void appendFiles(StringBuilder prompt, String title, List<KleePromptFile> files) {
         if (files == null || files.isEmpty()) {
             return;
@@ -105,6 +136,12 @@ public class PromptAssemblyService {
                 .forEach(file -> appendFile(prompt, title, file));
     }
 
+    /**
+     * 단일 파일을 프롬프트에 추가합니다.
+     * @param prompt 프롬프트 문자열 빌더
+     * @param title 섹션 제목
+     * @param file 파일
+     */
     private void appendFile(StringBuilder prompt, String title, KleePromptFile file) {
         String label = title;
         if (file.path() != null && !file.path().isBlank()) {
@@ -113,6 +150,12 @@ public class PromptAssemblyService {
         appendSection(prompt, label, file.content());
     }
 
+    /**
+     * 프롬프트 섹션을 추가합니다.
+     * @param prompt 프롬프트 문자열 빌더
+     * @param title 섹션 제목
+     * @param content 섹션 내용
+     */
     private void appendSection(StringBuilder prompt, String title, String content) {
         if (content == null || content.isBlank()) {
             return;
@@ -123,6 +166,11 @@ public class PromptAssemblyService {
         prompt.append("## ").append(title).append("\n\n").append(content.trim());
     }
 
+    /**
+     * 내부 스킬을 로드하고 문자열로 반환합니다.
+     * @param skillName 스킬 이름
+     * @return 스킬의 내용 문자열 또는 null
+     */
     private String loadInternalSkill(String skillName) {
         Resource resource = resourceLoader.getResource(SKILL_PROMPT_PREFIX + skillName + ".md");
         if (!resource.exists()) {
@@ -131,6 +179,11 @@ public class PromptAssemblyService {
         return readResource(resource, SKILL_PROMPT_PREFIX + skillName + ".md");
     }
 
+    /**
+     * 리소스를 로드하고 문자열로 반환합니다.
+     * @param location 리소스의 위치
+     * @return 리소스의 내용 문자열
+     */
     private String loadRequiredResource(String location) {
         Resource resource = resourceLoader.getResource(location);
         if (!resource.exists()) {
@@ -139,6 +192,12 @@ public class PromptAssemblyService {
         return readResource(resource, location);
     }
 
+    /**
+     * 리소스를 읽어 문자열로 반환합니다.
+     * @param resource 읽을 리소스
+     * @param location 리소스의 위치
+     * @return 리소스의 내용 문자열
+     */
     private String readResource(Resource resource, String location) {
         try {
             return StreamUtils.copyToString(resource.getInputStream(), StandardCharsets.UTF_8);
@@ -147,6 +206,11 @@ public class PromptAssemblyService {
         }
     }
 
+    /**
+     * 스킬 이름을 정규화합니다.
+     * @param name 스킬 이름
+     * @return 정규화된 스킬 이름 또는 null
+     */
     private String normalizeSkillName(String name) {
         if (name == null || name.isBlank()) {
             return null;

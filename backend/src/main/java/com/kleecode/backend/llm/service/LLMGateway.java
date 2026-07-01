@@ -20,6 +20,14 @@ import lombok.extern.slf4j.Slf4j;
 
 import java.util.List;
 
+/**
+ * @description LLM과의 통신을 담당하는 서비스
+ * - Ollama API를 통해 LLM과 통신합니다.
+ * - LLM 설정을 관리하고, 사용자의 선호도에 따라 적절한 모델과 설정을 선택합니다.
+ * - LLM과의 통신을 캡슐화하여, 다른 서비스들이 LLM과 직접 통신하지 않도록 합니다. (코드가 외부 LLM API에 직접 의존하지 않도록)
+ * - 온프렘 정책 기술적 강제
+ * LLMGateway
+ */
 @Slf4j
 @Component
 @RequiredArgsConstructor
@@ -32,6 +40,11 @@ public class LLMGateway {
     private final OllamaApi ollamaApi;
     private ChatClient chatClient;
 
+    /**
+     * 초기화 메서드
+     * - LLM 설정을 검증하고, Ollama API를 통해 사용 가능한 모델을 확인합니다.
+     * - ChatClient를 초기화하여 LLM과의 통신을 준비합니다.
+     */
     @PostConstruct
     void initialize() {
         validateProperties();
@@ -54,12 +67,21 @@ public class LLMGateway {
         return chatClient;
     }
 
+    /**
+     * 사용 가능한 모델 목록을 반환합니다.
+     * @return 모델 응답 목록
+     */
     public List<ModelResponse> availableModels() {
         return installedModels().stream()
                 .map(model -> new ModelResponse(model.name(), model.name(), model.name().equals(defaultModelName())))
                 .toList();
     }
 
+    /**
+     * 사용자의 선호도에 따라 LLM 설정을 결정합니다.
+     * @param preference 사용자의 선호도
+     * @return 결정된 LLM 설정
+     */
     public EffectiveLlmSettings resolve(UserPreference preference) {
         String selectedModel = preference == null ? null : preference.selectedModel();
         String modelName = isAllowedModel(selectedModel) ? selectedModel.trim() : defaultModelName();
@@ -74,6 +96,11 @@ public class LLMGateway {
         return new EffectiveLlmSettings(OLLAMA_PROVIDER, modelName, temperature, responseLanguage);
     }
 
+    /**
+     * 주어진 모델 이름이 허용된 모델인지 확인합니다.
+     * @param modelName 모델 이름
+     * @return 허용된 모델이면 true, 그렇지 않으면 false
+     */
     public boolean isAllowedModel(String modelName) {
         if (modelName == null || modelName.isBlank()) {
             return false;
@@ -82,10 +109,17 @@ public class LLMGateway {
         return installedModels().stream().anyMatch(model -> normalized.equals(model.name()));
     }
 
+    /**
+     * 기본 모델 이름을 반환합니다.
+     * @return 기본 모델 이름
+     */
     public String defaultModelName() {
         return properties.getDefaultModel();
     }
 
+    /**
+     * LLM 설정 속성을 검증합니다.
+     */
     private void validateProperties() {
         if (!OLLAMA_PROVIDER.equalsIgnoreCase(properties.getProvider())) {
             throw new IllegalStateException("Only ollama is supported as klee.llm.provider");
@@ -98,6 +132,10 @@ public class LLMGateway {
         }
     }
 
+    /**
+     * 설치된 모델 목록을 반환합니다.
+     * @return 설치된 모델 목록
+     */
     private List<OllamaApi.Model> installedModels() {
         try {
             OllamaApi.ListModelResponse response = ollamaApi.listModels();

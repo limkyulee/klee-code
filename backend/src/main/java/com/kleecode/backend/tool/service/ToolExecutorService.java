@@ -13,6 +13,11 @@ import java.util.UUID;
 import java.util.concurrent.CompletionException;
 import java.util.function.Consumer;
 
+/**
+ * @description Tool을 실행하는 서비스 
+ * - 동기적으로 Tool을 실행하고 결과를 기다립니다.
+ * ToolExecutorService
+ */
 @Service
 @RequiredArgsConstructor
 public class ToolExecutorService {
@@ -20,6 +25,15 @@ public class ToolExecutorService {
     private final ToolPolicyService toolPolicyService;
     private final ToolResultRegistry toolResultRegistry;
 
+    /**
+     * Tool을 실행하고 결과를 기다립니다.
+     * @param runId 실행 ID
+     * @param toolName Tool 이름
+     * @param arguments Tool 인자
+     * @param permissionMode 권한 모드
+     * @param dispatcher Tool 호출을 처리하는 Consumer
+     * @return Tool 실행 결과
+     */
     public ToolResultRequest execute(
             String runId,
             String toolName,
@@ -38,7 +52,12 @@ public class ToolExecutorService {
         String toolCallId = UUID.randomUUID().toString();
         ToolCallRequest toolCall = new ToolCallRequest(runId, toolCallId, toolName, arguments);
         var resultFuture = toolResultRegistry.register(runId, toolCallId);
-        dispatcher.accept(toolCall);
+        try {
+            dispatcher.accept(toolCall);
+        } catch (RuntimeException ex) {
+            toolResultRegistry.cancel(runId, toolCallId);
+            throw ex;
+        }
 
         try {
             return resultFuture.join();

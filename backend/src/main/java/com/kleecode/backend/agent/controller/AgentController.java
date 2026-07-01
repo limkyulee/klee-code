@@ -9,6 +9,7 @@ import com.kleecode.backend.tool.dto.ToolCallRequest;
 import com.kleecode.backend.tool.dto.ToolResultRequest;
 import com.kleecode.backend.tool.service.ToolResultRegistry;
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
@@ -53,10 +54,28 @@ public class AgentController {
 
     @PostMapping("/tool-results")
     public ResponseEntity<Void> toolResult(@RequestBody ToolResultRequest result) {
+        validateToolResult(result);
         if (!toolResultRegistry.complete(result)) {
             return ResponseEntity.notFound().build();
         }
         return ResponseEntity.accepted().build();
+    }
+
+    private void validateToolResult(ToolResultRequest result) {
+        if (result == null
+                || isBlank(result.runId())
+                || isBlank(result.toolCallId())
+                || result.status() == null) {
+            throw new ApiException(
+                    HttpStatus.BAD_REQUEST,
+                    "INVALID_TOOL_RESULT",
+                    "Tool result requires runId, toolCallId, and status"
+            );
+        }
+    }
+
+    private boolean isBlank(String value) {
+        return value == null || value.isBlank();
     }
 
     private void sendEvent(SseEmitter emitter, String name, Object data) {

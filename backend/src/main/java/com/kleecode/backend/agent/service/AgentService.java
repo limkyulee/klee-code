@@ -34,7 +34,7 @@ public class AgentService {
     private static final int MAX_TOOL_CALLS = 3;
     private static final int MAX_TOOL_RESULT_CHARS = 12_000;
     private static final Pattern TOOL_CALL_PATTERN = Pattern.compile(
-            "<klee_tool_call>\\s*(\\{.*?})\\s*</klee_tool_call>",
+            "<klee_tool_call>\\s*(.*?)\\s*</klee_tool_call>",
             Pattern.DOTALL
     );
 
@@ -131,7 +131,7 @@ public class AgentService {
         );
     }
 
-    private AgentToolCallInstruction parseToolCall(String modelOutput) {
+    AgentToolCallInstruction parseToolCall(String modelOutput) {
         if (modelOutput == null || modelOutput.isBlank()) {
             return null;
         }
@@ -139,11 +139,34 @@ public class AgentService {
         if (!matcher.find()) {
             return null;
         }
-        try {
-            return jsonMapper.readValue(matcher.group(1), AgentToolCallInstruction.class);
-        } catch (RuntimeException ex) {
-            throw new ApiException(HttpStatus.BAD_REQUEST, "INVALID_TOOL_CALL", "Model returned an invalid tool call");
+        String toolCallJson = matcher.group(1).trim();
+        if (!modelOutput.substring(0, matcher.start()).isBlank()
+                || !modelOutput.substring(matcher.end()).isBlank()
+                || matcher.find()) {
+            throw invalidToolCall();
         }
+        try {
+            AgentToolCallInstruction instruction = jsonMapper.readValue(
+                    toolCallJson,
+                    AgentToolCallInstruction.class
+            );
+            if (instruction == null
+                    || instruction.toolName() == null
+                    || instruction.toolName().isBlank()
+                    || instruction.arguments() == null) {
+                throw invalidToolCall();
+            }
+            return instruction;
+        } catch (RuntimeException ex) {
+            if (ex instanceof ApiException apiException) {
+                throw apiException;
+            }
+            throw invalidToolCall();
+        }
+    }
+
+    private ApiException invalidToolCall() {
+        return new ApiException(HttpStatus.BAD_REQUEST, "INVALID_TOOL_CALL", "Model returned an invalid tool call");
     }
 
     private String stripToolCall(String modelOutput) {
